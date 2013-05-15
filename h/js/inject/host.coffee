@@ -18,6 +18,9 @@ class Annotator.Host extends Annotator
     canDrag: false
 
   constructor: (element, options) ->
+    @log = window.getLogger "Annotator.host"
+    @log.info "Running constructor"
+
     super
 
     @app = @options.app
@@ -37,15 +40,20 @@ class Annotator.Host extends Annotator
     .attr('src', "#{@app}#/?xdm=#{encodeURIComponent(hostOrigin)}")
     .appendTo(@wrapper)
     .addClass('annotator-frame annotator-outer annotator-collapsed')
-    .bind 'load', => this._setupXDM()
+    .bind 'load', =>
+       @log.info "Iframe content loaded"
+       this._setupXDM()
+       @panel.notify method: 'setLoggerStartTime', params: window.loggerStartTime
+    @log.info "Inserted iframe"
 
     # Load plugins
     for own name, opts of @options
       if not @plugins[name]
+        @log.info "loading plugin '" + name + "'..."
         this.addPlugin(name, opts)
 
     # Scan the document text with the DOM Text libraries
-    this.scanDocument "Annotator initialized"
+    setTimeout => this.scanDocument "Annotator.Host initialized"
 
   _setupXDM: ->
     # Set up the bridge plugin, which bridges the main annotation methods
@@ -73,6 +81,7 @@ class Annotator.Host extends Annotator
       onReady: =>
         @frame.css('display', '')
 
+#        @log.info "Setting up XDM bindings"        
         @panel
 
         .bind('onEditorHide', this.onEditorHide)
@@ -154,13 +163,14 @@ class Annotator.Host extends Annotator
 
   scanDocument: (reason = "something happened") =>
     try
-      console.log "Analyzing host frame, because " + reason + "..."
-      @domMatcher.scan ( (progress) =>
+      @log.info "Analyzing host frame, because " + reason + "..."
+      @domMatcher.scan ((progress) =>
         @panel?.notify method: 'progress', params: (task: "Scanning document", progress: progress)
-      ), (r) =>
+      ), ((r) =>
         scanTime = r.time
         @panel?.notify method: 'progress', params: (task: "Scanning document", progress: 1)
-        console.log "Traversal+scan took " + scanTime + " ms."
+        @log.info "Host: Traversal+scan took " + scanTime + " ms."
+      )
     catch e
       console.log e.message
       console.log e.stack

@@ -87,9 +87,11 @@ domTextFamily = Bundle(
 base = ['h:css/base.scss']
 common = ['h:css/base.scss', 'h:css/common.scss']
 
+logging = Uglify(Coffee('h:js/inject/logging.coffee', output="js/logging.js"))
 
 # Main resource bundles
 app = Bundle(
+    logging,
     jquery,
     jquery_mousewheel,
     angular,
@@ -139,12 +141,12 @@ app = Bundle(
 
 site = SCSS('h:css/site.scss', depends=(base + common), output='css/site.css')
 
-
 # The inject is a script which loads the annotator in an iframe
 # and sets up an RPC channel for cross-domain communication between the
 # the frame and its parent window. It then makes cretain annotator methods
 # available via the bridge plugin.
 inject = Bundle(
+    logging,
     jquery,
     jschannel,
     annotator,

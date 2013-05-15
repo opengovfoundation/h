@@ -50,15 +50,17 @@ class Hypothesis extends Annotator
 
   this.$inject = ['$document', '$location', '$rootScope', '$route', 'drafts']
   constructor: ($document, $location, $rootScope, $route, drafts) ->
+    @log = window.getLogger "sidebar"
+    @log.info "Entering constructor"
     super ($document.find 'body')
+
+    # Set up XDM connection
+    this._setupXDM()
 
     # Load plugins
     for own name, opts of @options
       if not @plugins[name] and name of Annotator.Plugin
         this.addPlugin(name, opts)
-
-    # Set up XDM connection
-    this._setupXDM()
 
     # Add some info to new annotations
     this.subscribe 'beforeAnnotationCreated', (annotation) =>
@@ -107,6 +109,7 @@ class Hypothesis extends Annotator
 
     # Reload the route after annotations are loaded
     this.subscribe 'annotationsLoaded', -> $route.reload()
+    @log.info "Finished constructor"
 
   _setupXDM: ->
     $location = @element.injector().get '$location'
@@ -173,6 +176,7 @@ class Hypothesis extends Annotator
         @provider.call
           method: 'getHref'
           success: (href) =>
+            @log.info "loading 'Store' plugin, and annotations from back-end..."
             this.addPlugin 'Store',
               annotationData:
                 uri: href
@@ -181,11 +185,11 @@ class Hypothesis extends Annotator
                 uri: href
               prefix: '/api'
             patch_update this.plugins.Store
-            console.log "Loaded annotions for '" + href + "'."
+            @log.info "Loaded annotions for '" + href + "'."
             for href in this.getSynonymURLs href
-              console.log "Also loading annotations for: " + href
+              @log.info "Also loading annotations for: " + href
               this.plugins.Store._apiRequest 'search', uri: href, (data) =>
-                console.log "Found " + data.total + " annotations here.."
+                @log.info "Found " + data.total + " annotations here.."
                 this.plugins.Store._onLoadAnnotationsFromSearch data
 
         # Dodge toolbars [DISABLE]
@@ -209,7 +213,14 @@ class Hypothesis extends Annotator
         this.hide()
     )
 
+    .bind('setLoggerStartTime', (ctx, timestamp) ->
+      diff = timestamp - window.loggerStartTime
+#      console.log "Correcting logging start time with " + diff + " ms."
+      window.loggerStartTime = timestamp
+    )
+        
     .bind('progress', (ctx, status) =>
+#      @log.info "progress for '" + status.task + "': " + status.progress
       @plugins.Progress.updateProgress status.task, status.progress
     )
 
@@ -220,7 +231,7 @@ class Hypothesis extends Annotator
     stringEndsWith = (string, suffix) ->
       suffix is string.substr string.length - suffix.length
 
-    console.log "Looking for synonym URLs for '" + href + "'..."
+    @log.info "Looking for synonym URLs for '" + href + "'..."
     results = []
     if stringStartsWith href, "http://elife.elifesciences.org/content"
       if stringEndsWith href, ".full-text.pdf"
