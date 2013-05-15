@@ -1,12 +1,12 @@
 /*
-** Annotator 1.2.6-dev-383514e
+** Annotator 1.2.6-dev-f1a9ce0
 ** https://github.com/okfn/annotator/
 **
 ** Copyright 2012 Aron Carroll, Rufus Pollock, and Nick Stenning.
 ** Dual licensed under the MIT and GPLv3 licenses.
 ** https://github.com/okfn/annotator/blob/master/LICENSE
 **
-** Built at: 2013-03-19 03:37:56Z
+** Built at: 2013-05-15 22:02:59Z
 */
 
 (function() {
@@ -671,13 +671,21 @@
       this.onEditorSubmit = __bind(this.onEditorSubmit, this);
       this.onEditorHide = __bind(this.onEditorHide, this);
       this.showEditor = __bind(this.showEditor, this);
-      this.getHref = __bind(this.getHref, this);      Annotator.__super__.constructor.apply(this, arguments);
+      this.getHref = __bind(this.getHref, this);
+      var _this = this;
+      Annotator.__super__.constructor.apply(this, arguments);
       this.plugins = {};
       if (!Annotator.supported()) return this;
       if (!this.options.readOnly) this._setupDocumentEvents();
       this._setupWrapper()._setupViewer()._setupEditor();
-      this._setupDynamicStyle();
-      this.adder = $(this.html.adder).appendTo(this.wrapper).hide();
+      setTimeout((function() {
+        var _ref2, _ref3, _ref4;
+        if ((_ref2 = _this.log) != null) _ref2.info("Gonna setup dynamic style");
+        _this._setupDynamicStyle();
+        if ((_ref3 = _this.log) != null) _ref3.info("Gonna create adder");
+        _this.adder = $(_this.html.adder).appendTo(_this.wrapper).hide();
+        return (_ref4 = _this.log) != null ? _ref4.info("Created adder") : void 0;
+      }), 10000);
     }
 
     Annotator.prototype._setupMatching = function() {

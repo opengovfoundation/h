@@ -163,8 +163,11 @@ class Annotator.Host extends Annotator
 
   scanDocument: (reason = "something happened") =>
     try
+      window.wtfMapper = @domMapper
       @log.info "Analyzing host frame, because " + reason + "..."
-      @domMatcher.scan ((progress) =>
+      @domMatcher.scanAsync ((progress) =>
+#        @log.info "Scan progress: " + progress +
+#          (if @panel? then "; reporting" else "; can't report")
         @panel?.notify method: 'progress', params: (task: "Scanning document", progress: progress)
       ), ((r) =>
         scanTime = r.time
