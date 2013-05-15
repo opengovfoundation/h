@@ -1,12 +1,12 @@
 /*
-** Annotator 1.2.6-dev-ca14844
+** Annotator 1.2.6-dev-1545e1b
 ** https://github.com/okfn/annotator/
 **
 ** Copyright 2012 Aron Carroll, Rufus Pollock, and Nick Stenning.
 ** Dual licensed under the MIT and GPLv3 licenses.
 ** https://github.com/okfn/annotator/blob/master/LICENSE
 **
-** Built at: 2013-05-03 17:03:28Z
+** Built at: 2013-05-15 17:09:59Z
 */
 
 (function() {
@@ -18,7 +18,7 @@
     __bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; };
 
   window.DomTextMapper = (function() {
-    var CONTEXT_LEN, SELECT_CHILDREN_INSTEAD, USE_EMPTY_TEXT_WORKAROUND, USE_TABLE_TEXT_WORKAROUND, WHITESPACE;
+    var CONTEXT_LEN, SCAN_JOB_LENGTH_MS, SELECT_CHILDREN_INSTEAD, USE_EMPTY_TEXT_WORKAROUND, USE_TABLE_TEXT_WORKAROUND, WHITESPACE;
 
     USE_TABLE_TEXT_WORKAROUND = true;
 
@@ -27,6 +27,8 @@
     SELECT_CHILDREN_INSTEAD = ["thead", "tbody", "ol", "a", "caption", "p"];
 
     CONTEXT_LEN = 32;
+
+    SCAN_JOB_LENGTH_MS = 100;
 
     DomTextMapper.instances = [];
 
@@ -37,7 +39,7 @@
       _ref = this.instances;
       for (_i = 0, _len = _ref.length; _i < _len; _i++) {
         instance = _ref[_i];
-        instance.performUpdateOnNode(node);
+        instance.performSyncUpdateOnNode(node);
       }
       return null;
     };
@@ -82,22 +84,50 @@
       return this.lastDOMChange = this.timestamp();
     };
 
-    DomTextMapper.prototype.scan = function() {
-      var node, path, startTime, t1, t2;
+    DomTextMapper.prototype.scanSync = function() {
+      var node, pathStart, startTime, t1, t2, task;
       if (this.domStableSince(this.lastScanned)) return this.path;
       startTime = this.timestamp();
-      this.saveSelection();
       this.path = {};
-      this.traverseSubTree(this.pathStartNode, this.getDefaultPath());
-      t1 = this.timestamp();
-      path = this.getPathTo(this.pathStartNode);
-      node = this.path[path].node;
-      this.collectPositions(node, path, null, 0, 0);
+      pathStart = this.getDefaultPath();
+      task = {
+        node: this.pathStartNode,
+        path: pathStart
+      };
+      this.saveSelection();
+      this.finishTraverseSync(task);
       this.restoreSelection();
+      t1 = this.timestamp();
+      console.log("Phase I (Path traversal) took " + (t1 - startTime) + " ms.");
+      node = this.path[pathStart].node;
+      this.collectPositions(node, pathStart, null, 0, 0);
       this.lastScanned = this.timestamp();
-      this.corpus = this.path[path].content;
+      this.corpus = this.path[pathStart].content;
       t2 = this.timestamp();
-      return this.path;
+      console.log("Phase II (offset calculation) took " + (t2 - t1) + " ms.");
+      this.path;
+      return null;
+    };
+
+    DomTextMapper.prototype.scanAsync = function(onProgress, onFinished) {
+      var pathStart, task,
+        _this = this;
+      if (this.domStableSince(this.lastScanned)) onFinished(this.path);
+      this.path = {};
+      pathStart = this.getDefaultPath();
+      task = {
+        node: this.pathStartNode,
+        path: pathStart
+      };
+      this.finishTraverseAsync(task, onProgress, function() {
+        var node;
+        node = _this.path[pathStart].node;
+        _this.collectPositions(node, pathStart, null, 0, 0);
+        _this.lastScanned = _this.timestamp();
+        _this.corpus = _this.path[pathStart].content;
+        return onFinished(_this.path);
+      });
+      return null;
     };
 
     DomTextMapper.prototype.selectPath = function(path, scroll) {
@@ -110,17 +140,19 @@
       return this.selectNode(node, scroll);
     };
 
-    DomTextMapper.prototype.performUpdateOnNode = function(node, escalating) {
-      var data, oldIndex, p, parentNode, parentPath, parentPathInfo, path, pathInfo, pathsToDrop, prefix, startTime, _i, _len, _ref;
+    DomTextMapper.prototype.performSyncUpdateOnNode = function(node, escalating) {
+      var data, oldIndex, p, parentNode, parentPath, parentPathInfo, path, pathInfo, pathsToDrop, prefix, startTime, task, _i, _len, _ref;
       if (escalating == null) escalating = false;
-      if (node == null) throw new Error("Called performUpdate with a null node!");
+      if (node == null) {
+        throw new Error("Called performSyncUpdateOnOde with a null node!");
+      }
       if (this.path == null) return;
       startTime = this.timestamp();
       if (!escalating) this.saveSelection();
       path = this.getPathTo(node);
       pathInfo = this.path[path];
       if (pathInfo == null) {
-        this.performUpdateOnNode(node.parentNode, true);
+        this.performSyncUpdateOnNode(node.parentNode, true);
         if (!escalating) this.restoreSelection();
         return;
       }
@@ -137,7 +169,11 @@
           p = pathsToDrop[_i];
           delete this.path[p];
         }
-        this.traverseSubTree(node, path);
+        task = {
+          path: path,
+          node: node
+        };
+        this.finishTraverseSync(task);
         if (pathInfo.node === this.pathStartNode) {
           console.log("Ended up rescanning the whole doc.");
           this.collectPositions(node, path, null, 0, 0);
@@ -153,7 +189,7 @@
       } else {
         if (pathInfo.node !== this.pathStartNode) {
           parentNode = node.parentNode != null ? node.parentNode : (parentPath = this.parentPath(path), this.lookUpNode(parentPath));
-          this.performUpdateOnNode(parentNode, true);
+          this.performSyncUpdateOnNode(parentNode, true);
         } else {
           throw new Error("Can not keep up with the changes, since even the node configured as path start node was replaced.");
         }
@@ -230,7 +266,9 @@
       if (!((start != null) && (end != null))) {
         throw new Error("start and end is required!");
       }
-      this.scan();
+      if (!this.domStableSince(this.lastScanned)) {
+        throw new Error("Can not get mappings, since the dom has changed since last scanned. Call scan first.");
+      }
       mappings = [];
       _ref = this.path;
       for (p in _ref) {
@@ -399,11 +437,12 @@
       return xpath;
     };
 
-    DomTextMapper.prototype.traverseSubTree = function(node, path, invisible, verbose) {
-      var child, cont, subpath, _i, _len, _ref;
-      if (invisible == null) invisible = false;
-      if (verbose == null) verbose = false;
-      this.underTraverse = path;
+    DomTextMapper.prototype.executeTraverseTask = function(task) {
+      var child, cont, invisiable, invisible, node, path, verbose, _i, _len, _ref, _ref2, _ref3;
+      node = task.node;
+      this.underTraverse = path = task.path;
+      invisiable = (_ref = task.invisible) != null ? _ref : false;
+      verbose = (_ref2 = task.verbose) != null ? _ref2 : false;
       cont = this.getNodeContent(node, false);
       this.path[path] = {
         path: path,
@@ -421,14 +460,86 @@
         invisible = true;
       }
       if (node.hasChildNodes()) {
-        _ref = node.childNodes;
-        for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-          child = _ref[_i];
-          subpath = path + '/' + (this.getPathSegment(child));
-          this.traverseSubTree(child, subpath, invisible, verbose);
+        _ref3 = node.childNodes;
+        for (_i = 0, _len = _ref3.length; _i < _len; _i++) {
+          child = _ref3[_i];
+          this.traverseTasks.push({
+            node: child,
+            path: path + '/' + (this.getPathSegment(child)),
+            invisible: invisible,
+            verbose: verbose
+          });
         }
       }
       return null;
+    };
+
+    DomTextMapper.prototype.runTraverseRounds = function() {
+      var progress, roundStart, task, tasksDone,
+        _this = this;
+      try {
+        this.saveSelection();
+        roundStart = this.timestamp();
+        tasksDone = 0;
+        while (this.traverseTasks.length && (this.timestamp() - roundStart < SCAN_JOB_LENGTH_MS)) {
+          task = this.traverseTasks.pop();
+          this.executeTraverseTask(task);
+          tasksDone += 1;
+          if (!task.node.hasChildNodes()) {
+            this.traverseCoveredChars += this.path[task.path].length;
+          }
+        }
+        this.restoreSelection();
+        if (this.traverseOnProgress != null) {
+          progress = this.traverseCoveredChars / this.traverseTotalLength;
+          this.traverseOnProgress(progress);
+        }
+        if (this.traverseTasks.length) {
+          return window.setTimeout(function() {
+            return _this.runTraverseRounds();
+          });
+        } else {
+          return this.traverseOnFinished();
+        }
+      } catch (exception) {
+        console.log("OOps. Internal error:");
+        console.log(exception);
+        return console.log(exception.stack);
+      }
+    };
+
+    DomTextMapper.prototype.finishTraverseSync = function(rootTask) {
+      var _results;
+      if ((this.traverseTasks != null) && this.traverseTasks.size) {
+        throw new Error("Error: a DOM traverse is already in progress!");
+      }
+      this.traverseTasks = [];
+      this.executeTraverseTask(rootTask);
+      this.traverseTotalLength = this.path[rootTask.path].length;
+      this.traverseCoveredChars = 0;
+      _results = [];
+      while (this.traverseTasks.length) {
+        _results.push(this.executeTraverseTask(this.traverseTasks.pop()));
+      }
+      return _results;
+    };
+
+    DomTextMapper.prototype.finishTraverseAsync = function(rootTask, onProgress, onFinished) {
+      var _this = this;
+      if ((this.traverseTasks != null) && this.traverseTasks.size) {
+        throw new Error("Error: a DOM traverse is already in progress!");
+      }
+      this.traverseTasks = [];
+      this.saveSelection();
+      this.executeTraverseTask(rootTask);
+      this.restoreSelection();
+      this.traverseTotalLength = this.path[rootTask.path].length;
+      this.traverseOnProgress = onProgress;
+      this.traverseCoveredChars = 0;
+      this.traverseOnFinished = onFinished;
+      return window.setTimeout(function() {
+        return _this.runTraverseRounds();
+      });
     };
 
     DomTextMapper.prototype.getBody = function() {
@@ -658,6 +769,8 @@
     DTM_ExactMatcher.prototype.search = function(text, pattern) {
       var i, index, pLen, results,
         _this = this;
+      if (text == null) throw new Error("Called search with null text!");
+      if (pattern == null) throw new Error("Called search with null pattern!");
       pLen = pattern.length;
       results = [];
       index = 0;
@@ -699,6 +812,8 @@
 
     DTM_RegexMatcher.prototype.search = function(text, pattern) {
       var m, re, _results;
+      if (text == null) throw new Error("Called search with null text!");
+      if (pattern == null) throw new Error("Called search with null pattern!");
       re = new RegExp(pattern, this.caseSensitive ? "g" : "gi");
       _results = [];
       while (m = re.exec(text)) {
@@ -758,6 +873,8 @@
       var endIndex, endLen, endLoc, endPos, endSlice, found, matchLen, maxLen, pLen, result, startIndex, startLen, startPos, startSlice;
       if (expectedStartLoc == null) expectedStartLoc = 0;
       if (options == null) options = {};
+      if (text == null) throw new Error("Called search with null text!");
+      if (pattern == null) throw new Error("Called search with null pattern!");
       if (expectedStartLoc < 0) {
         throw new Error("Can't search at negative indices!");
       }
@@ -864,10 +981,42 @@
       return this.mapper.documentChanged();
     };
 
-    DomTextMatcher.prototype.scan = function() {
+    DomTextMatcher.prototype.scanAsync = function(onProgress, onFinished) {
+      var t0,
+        _this = this;
+      if (onFinished == null) {
+        throw new Error("Called scan() with no onFinished argument!");
+      }
+      t0 = this.timestamp();
+      this.mapper.scanAsync(onProgress, function(data) {
+        var t1;
+        t1 = _this.timestamp();
+        return onFinished({
+          time: t1 - t0,
+          data: data
+        });
+      });
+      return null;
+    };
+
+    DomTextMatcher.prototype.scanPromise = function() {
+      var dfd, onFinished, onProgress,
+        _this = this;
+      dfd = new jQuery.Deferred();
+      onProgress = function(data) {
+        return dfd.notify(data);
+      };
+      onFinished = function(data) {
+        return dfd.resolve(data);
+      };
+      this.scanAsync(onProgress, onFinished);
+      return dfd.promise();
+    };
+
+    DomTextMatcher.prototype.scanSync = function() {
       var data, t0, t1;
       t0 = this.timestamp();
-      data = this.mapper.scan();
+      data = this.mapper.scanSync();
       t1 = this.timestamp();
       return {
         time: t1 - t0,
@@ -1736,7 +1885,7 @@
       if (!this.options.noMatching) this._setupMatching();
       this._setupWrapper()._setupViewer()._setupEditor();
       this._setupDynamicStyle();
-      if (!(this.options.noScan || this.options.noMatching)) this._scan();
+      if (!(this.options.noScan || this.options.noMatching)) this._scanSync();
       this.adder = $(this.html.adder).appendTo(this.wrapper).hide();
     }
 
@@ -1746,8 +1895,8 @@
       return this;
     };
 
-    Annotator.prototype._scan = function() {
-      return this.domMatcher.scan();
+    Annotator.prototype._scanSync = function() {
+      return this.domMatcher.scanSync();
     };
 
     Annotator.prototype._setupWrapper = function() {

@@ -1,12 +1,12 @@
 /*
-** Annotator 1.2.6-dev-939cdee
+** Annotator 1.2.6-dev-1545e1b
 ** https://github.com/okfn/annotator/
 **
 ** Copyright 2012 Aron Carroll, Rufus Pollock, and Nick Stenning.
 ** Dual licensed under the MIT and GPLv3 licenses.
 ** https://github.com/okfn/annotator/blob/master/LICENSE
 **
-** Built at: 2013-04-12 22:07:29Z
+** Built at: 2013-05-15 16:54:38Z
 */
 
 (function() {
