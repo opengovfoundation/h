@@ -1,16 +1,16 @@
 /*
-** Annotator 1.2.6-dev-1545e1b
+** Annotator 1.2.6-dev-d8adaf8
 ** https://github.com/okfn/annotator/
 **
 ** Copyright 2012 Aron Carroll, Rufus Pollock, and Nick Stenning.
 ** Dual licensed under the MIT and GPLv3 licenses.
 ** https://github.com/okfn/annotator/blob/master/LICENSE
 **
-** Built at: 2013-05-15 17:09:59Z
+** Built at: 2013-05-21 16:54:46Z
 */
 
 (function() {
-  var $, Annotator, Delegator, LinkParser, Range, fn, functions, g, gettext, util, _Annotator, _gettext, _i, _j, _len, _len2, _ref, _ref2, _t,
+  var $, Annotator, Delegator, LinkParser, Range, TaskManager, fn, functions, g, gettext, util, _Annotator, _CompositeTask, _Task, _TaskGen, _gettext, _i, _j, _len, _len2, _ref, _ref2, _t,
     __indexOf = Array.prototype.indexOf || function(item) { for (var i = 0, l = this.length; i < l; i++) { if (i in this && this[i] === item) return i; } return -1; },
     __slice = Array.prototype.slice,
     __hasProp = Object.prototype.hasOwnProperty,
@@ -690,6 +690,13 @@
       if (parentIndex == null) parentIndex = 0;
       if (index == null) index = 0;
       pathInfo = this.path[path];
+      if (pathInfo == null) {
+        console.log("Warning: have no info about this node:");
+        console.log(node);
+        console.log("This probably was _not_ here last time.");
+        console.log("Expect problems.");
+        return index;
+      }
       content = pathInfo != null ? pathInfo.content : void 0;
       if (!(content != null) || content === "") {
         pathInfo.start = parentIndex + index;
@@ -1004,7 +1011,10 @@
         _this = this;
       dfd = new jQuery.Deferred();
       onProgress = function(data) {
-        return dfd.notify(data);
+        return dfd.notify({
+          text: "scanning...",
+          progress: data
+        });
       };
       onFinished = function(data) {
         return dfd.resolve(data);
@@ -1785,6 +1795,333 @@
 
   })();
 
+  _Task = (function() {
+
+    _Task.prototype.uniqueId = function(length) {
+      var id;
+      if (length == null) length = 8;
+      id = "";
+      while (id.length < length) {
+        id += Math.random().toString(36).substr(2);
+      }
+      return id.substr(0, length);
+    };
+
+    function _Task(info) {
+      this._start = __bind(this._start, this);
+      var _this = this;
+      if (info.manager == null) {
+        throw new Error("Trying to create task with no manager!");
+      }
+      if (info.name == null) {
+        throw new Error("Trying to create task with no name!");
+      }
+      if (info.code == null) {
+        throw new Error("Trying to define task with no code!");
+      }
+      this.manager = info.manager;
+      this.taskID = this.uniqueId();
+      this._name = info.name;
+      this._todo = info.code;
+      this._data = info.data;
+      if (info.deps == null) info.deps = [];
+      this.setDeps(info.deps);
+      this.started = false;
+      this.dfd = new jQuery.Deferred();
+      this.dfd._notify = this.dfd.notify;
+      this.dfd.notify = function(data) {
+        return _this.dfd._notify($.extend(data, {
+          task: _this,
+          taskName: _this._name
+        }));
+      };
+      this.dfd.ready = function(data) {
+        var elapsedTime, endTime;
+        endTime = new Date().getTime();
+        elapsedTime = endTime - _this.dfd.startTime;
+        _this.dfd.notify({
+          progress: 1,
+          text: "Finished in " + elapsedTime + "ms."
+        });
+        return _this.dfd.resolve(data);
+      };
+      this.dfd.promise(this);
+    }
+
+    _Task.prototype.setDeps = function(deps) {
+      if (!Array.isArray(deps)) deps = [deps];
+      return this._deps = deps;
+    };
+
+    _Task.prototype.addDeps = function(toAdd) {
+      var dep, _k, _len3, _results;
+      if (!Array.isArray(toAdd)) toAdd = [toAdd];
+      _results = [];
+      for (_k = 0, _len3 = toAdd.length; _k < _len3; _k++) {
+        dep = toAdd[_k];
+        _results.push(this._deps.push(dep));
+      }
+      return _results;
+    };
+
+    _Task.prototype.removeDeps = function(toRemove) {
+      console.log("Should remove:");
+      console.log(toRemove);
+      if (!Array.isArray(toRemove)) toRemove = [toRemove];
+      return this._deps = this._deps.filter(function(dep) {
+        return __indexOf.call(toRemove, dep) < 0;
+      });
+    };
+
+    _Task.prototype.resolveDeps = function() {
+      var dep;
+      return this._depsResolved = (function() {
+        var _k, _len3, _ref2, _results;
+        _ref2 = this._deps;
+        _results = [];
+        for (_k = 0, _len3 = _ref2.length; _k < _len3; _k++) {
+          dep = _ref2[_k];
+          _results.push(typeof dep === "string" ? this.manager.lookup(dep) : dep);
+        }
+        return _results;
+      }).call(this);
+    };
+
+    _Task.prototype._start = function() {
+      var dep, _k, _len3, _ref2,
+        _this = this;
+      if (this.started) {
+        console.log("This task ('" + this._name + "') has already been started!");
+        return;
+      }
+      _ref2 = this._depsResolved;
+      for (_k = 0, _len3 = _ref2.length; _k < _len3; _k++) {
+        dep = _ref2[_k];
+        if (!dep.isResolved()) {
+          console.log("What am I doing here? Out of the " + this._depsResolved.length + " dependencies, '" + dep._name + "' for the current task '" + this._name + "' has not yet been resolved!");
+          return;
+        }
+      }
+      return setTimeout(function() {
+        _this.dfd.notify({
+          progress: 0,
+          text: "Starting"
+        });
+        _this.dfd.startTime = new Date().getTime();
+        return _this._todo(_this.dfd, _this._data);
+      });
+    };
+
+    return _Task;
+
+  })();
+
+  _TaskGen = (function() {
+
+    function _TaskGen(info) {
+      this.manager = info.manager;
+      this.name = info.name;
+      this.todo = info.code;
+      this.count = 0;
+    }
+
+    _TaskGen.prototype.create = function(info) {
+      var name;
+      this.count += 1;
+      return name = this.manager.create({
+        name: this.name + " #" + this.count + ": " + info.instanceName,
+        code: this.todo,
+        deps: info.deps,
+        data: info.data
+      });
+    };
+
+    return _TaskGen;
+
+  })();
+
+  _CompositeTask = (function(_super) {
+
+    __extends(_CompositeTask, _super);
+
+    function _CompositeTask(info) {
+      var _this = this;
+      if (info.code != null) {
+        throw new Error("You can not specify code for a CompositeTask!");
+      }
+      info.code = function() {
+        return _this.trigger.dfd.resolve();
+      };
+      _CompositeTask.__super__.constructor.call(this, info);
+      this.subTasks = {};
+      this.pendingSubTasks = 0;
+      this.trigger = this.createSubTask({
+        weight: 0,
+        name: info.name + "__init",
+        code: function(task) {}
+      });
+    }
+
+    _CompositeTask.prototype.addSubTask = function(info) {
+      var task, weight,
+        _this = this;
+      weight = info.weight;
+      if (weight == null) throw new Error("Trying to add subTask with no weight!");
+      task = info.task;
+      if (task == null) throw new Error("Trying to add subTask with no task!");
+      if (this.trigger != null) task.addDeps(this.trigger);
+      this.subTasks[task.taskID] = {
+        weight: weight,
+        progress: 0,
+        text: "no info about this subtask"
+      };
+      this.pendingSubTasks += 1;
+      task.done(function() {
+        _this.pendingSubTasks -= 1;
+        if (!_this.pendingSubTasks) return _this.dfd.ready();
+      });
+      return task.progress(function(info) {
+        var countId, countInfo, progress, report, taskInfo, _ref2;
+        task = info.task;
+        delete info.task;
+        if (task === _this.trigger) return;
+        taskInfo = _this.subTasks[task.taskID];
+        $.extend(taskInfo, info);
+        progress = 0;
+        _ref2 = _this.subTasks;
+        for (countId in _ref2) {
+          countInfo = _ref2[countId];
+          progress += countInfo.progress * countInfo.weight;
+        }
+        report = {
+          progress: progress
+        };
+        if (info.text != null) report.text = task._name + ": " + info.text;
+        return _this.dfd.notify(report);
+      });
+    };
+
+    _CompositeTask.prototype.createSubTask = function(info) {
+      var task, w;
+      w = info.weight;
+      delete info.weight;
+      task = this.manager.create(info);
+      this.addSubTask({
+        weight: w,
+        task: task
+      });
+      return task;
+    };
+
+    return _CompositeTask;
+
+  })(_Task);
+
+  TaskManager = (function() {
+
+    function TaskManager(name) {
+      this.name = name;
+    }
+
+    TaskManager.prototype.tasks = {};
+
+    TaskManager.prototype._checkName = function(info) {
+      var name;
+      name = info != null ? info.name : void 0;
+      if (name == null) {
+        console.log(info);
+        throw new Error("Trying to create a task without a name!");
+      }
+      if (this.tasks[name] != null) {
+        console.log("Warning: overriding existing task '" + name + "' with new definition!");
+      }
+      return name;
+    };
+
+    TaskManager.prototype.create = function(info) {
+      var name, task;
+      name = this._checkName(info);
+      info.manager = this;
+      task = new _Task(info);
+      this.tasks[name] = task;
+      return task;
+    };
+
+    TaskManager.prototype.createDummy = function(info) {
+      info.code = function(task) {
+        return task.ready();
+      };
+      return this.create(info);
+    };
+
+    TaskManager.prototype.createGenerator = function(info) {
+      info.manager = this;
+      return new _TaskGen(info);
+    };
+
+    TaskManager.prototype.createComposite = function(info) {
+      var name, task;
+      name = this._checkName(info);
+      info.manager = this;
+      task = new _CompositeTask(info);
+      this.tasks[name] = task;
+      return task;
+    };
+
+    TaskManager.prototype.setDeps = function(from, to) {
+      return (this.lookup(from)).setDeps(to);
+    };
+
+    TaskManager.prototype.addDeps = function(from, to) {
+      return (this.lookup(from)).addDeps(to);
+    };
+
+    TaskManager.prototype.removeDeps = function(from, to) {
+      return (this.lookup(from)).removeDeps(to);
+    };
+
+    TaskManager.prototype.removeAllDepsTo = function(to) {
+      return console.log("a");
+    };
+
+    TaskManager.prototype.lookup = function(name) {
+      var result;
+      result = this.tasks[name];
+      if (result == null) {
+        throw new Error("Looking up non-existant task '" + name + "'." + " Known tasks are: " + this.tasks.keys);
+      }
+      return result;
+    };
+
+    TaskManager.prototype.schedule = function() {
+      var deps, dt, name, task, _ref2;
+      _ref2 = this.tasks;
+      for (name in _ref2) {
+        task = _ref2[name];
+        try {
+          deps = task.resolveDeps();
+          dt = task;
+          if (deps.length === 0) {
+            task._start();
+          } else if (deps.length === 1) {
+            deps[0].done(task._start);
+          } else {
+            $.when.apply(null, deps).done(task._start);
+          }
+        } catch (exception) {
+          console.log("E:");
+          console.log(exception);
+          console.log(exception.stack);
+          console.log("Could not resolve dependencies for task '" + name + "', so not scheduling it.");
+        }
+      }
+      return null;
+    };
+
+    return TaskManager;
+
+  })();
+
   util = {
     uuid: (function() {
       var counter;
@@ -1881,15 +2218,123 @@
       this.getHref = __bind(this.getHref, this);      Annotator.__super__.constructor.apply(this, arguments);
       this.plugins = {};
       if (!Annotator.supported()) return this;
-      if (!this.options.readOnly) this._setupDocumentEvents();
-      if (!this.options.noMatching) this._setupMatching();
-      this._setupWrapper()._setupViewer()._setupEditor();
-      this._setupDynamicStyle();
-      if (!(this.options.noScan || this.options.noMatching)) this._scanSync();
-      this.adder = $(this.html.adder).appendTo(this.wrapper).hide();
+      this.tasks = new TaskManager("Annotator");
+      if (!this.options.noInit) {
+        if (this.options.asyncInit) {
+          this.initAsync();
+        } else {
+          this.initSync();
+        }
+      }
+      null;
     }
 
-    Annotator.prototype._setupMatching = function() {
+    Annotator.prototype.initSync = function() {
+      this._init = new jQuery.Deferred();
+      this.init = this._init.promise();
+      this._setupDTM();
+      this._setupDynamicStyle();
+      this._setupViewer()._setupEditor();
+      this._setupWrapper();
+      this.adder = $(this.html.adder).appendTo(this.wrapper).hide();
+      if (!this.options.noScan) this._scanSync();
+      if (!this.options.readOnly) this._setupDocumentEvents();
+      this._init.resolve();
+      return null;
+    };
+
+    Annotator.prototype.defineAsyncInitTasks = function() {
+      var scan,
+        _this = this;
+      this.init = this.tasks.createComposite({
+        name: "Booting Annotator"
+      });
+      this.init.createSubTask({
+        weight: 0.031,
+        name: "setup d-t-m",
+        code: function(task) {
+          _this._setupDTM();
+          return task.ready();
+        }
+      });
+      this.init.createSubTask({
+        weight: 0.093,
+        name: "setup dynamic CSS styles",
+        code: function(task) {
+          _this._setupDynamicStyle();
+          return task.ready();
+        }
+      });
+      this.init.createSubTask({
+        weight: 0.062,
+        name: "setup wrapper",
+        deps: ["setup d-t-m"],
+        code: function(task) {
+          _this._setupWrapper();
+          return task.ready();
+        }
+      });
+      this.init.createSubTask({
+        weight: 0.072,
+        name: "create adder",
+        deps: ["setup wrapper"],
+        code: function(task) {
+          _this.adder = $(_this.html.adder).appendTo(_this.wrapper).hide();
+          return task.ready();
+        }
+      });
+      this.init.createSubTask({
+        weight: 0.113,
+        name: "setup viewer & editor",
+        code: function(task) {
+          _this._setupViewer()._setupEditor();
+          return task.ready();
+        }
+      });
+      this._scanGen = this.tasks.createGenerator({
+        name: "scan document",
+        code: function(task) {
+          var s;
+          s = _this._scanAsync();
+          s.progress(task.notify);
+          return s.done(task.ready);
+        }
+      });
+      if (this.options.noScan) {
+        scan = this.tasks.createDummy({
+          name: "Skipping scan"
+        });
+      } else {
+        scan = this._scanGen.create({
+          instanceName: "Initial scan",
+          deps: ["setup d-t-m", "setup wrapper"]
+        });
+      }
+      this.init.addSubTask({
+        weight: 0.619,
+        task: scan
+      });
+      return this.init.createSubTask({
+        weight: 0.01,
+        name: "setup document events",
+        deps: ["setup d-t-m", "setup wrapper", "setup viewer & editor", scan, "setup dynamic CSS styles", "create adder"],
+        code: function(task) {
+          if (!_this.options.readOnly) _this._setupDocumentEvents();
+          return task.ready();
+        }
+      });
+    };
+
+    Annotator.prototype.initAsync = function() {
+      var _this = this;
+      this.defineAsyncInitTasks();
+      this.init.progress(function(info) {
+        return console.log(info.taskName + ": " + info.progress + " - " + info.text);
+      });
+      return this.tasks.schedule();
+    };
+
+    Annotator.prototype._setupDTM = function() {
       this.domMapper = new DomTextMapper();
       this.domMatcher = new DomTextMatcher(this.domMapper);
       return this;
@@ -1899,12 +2344,17 @@
       return this.domMatcher.scanSync();
     };
 
+    Annotator.prototype._scanAsync = function() {
+      return this.domMatcher.scanPromise();
+    };
+
     Annotator.prototype._setupWrapper = function() {
+      var _ref2;
       this.wrapper = $(this.html.wrapper);
       this.element.find('script').remove();
       this.element.wrapInner(this.wrapper);
       this.wrapper = this.element.find('.annotator-wrapper');
-      this.domMapper.setRootNode(this.wrapper[0]);
+      if ((_ref2 = this.domMapper) != null) _ref2.setRootNode(this.wrapper[0]);
       return this;
     };
 
@@ -2049,9 +2499,6 @@
     Annotator.prototype.getSelectedTargets = function() {
       var browserRange, i, normedRange, r, rangesToIgnore, realRange, selection, source, targets, _k, _len3,
         _this = this;
-      if (this.domMapper == null) {
-        throw new Error("Can not execute getSelectedTargets() before _setupMatching()!");
-      }
       if (!this.wrapper) {
         throw new Error("Can not execute getSelectedTargets() before @wrapper is configured!");
       }
