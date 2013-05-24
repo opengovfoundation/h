@@ -18,7 +18,7 @@ class Annotator.Host extends Annotator
 
   constructor: (element, options) ->
     @log ?= getXLogger "Annotator.Host"
-    @log.info "Constructor running."
+    @log.debug "Started constructor."
 
     options.noScan = true
     super
@@ -56,6 +56,9 @@ class Annotator.Host extends Annotator
     # Scan the document text with the DOM Text libraries
     this.scanDocument "Annotator initialized"
 
+    @log.debug "Finished constructor."
+
+
   _setupXDM: ->
     # Set up the bridge plugin, which bridges the main annotation methods
     # between the host page and the panel widget.
@@ -88,6 +91,7 @@ class Annotator.Host extends Annotator
       onReady: =>
         @frame.css('display', '')
 
+        @log.debug "We have the panel UI channel; setting up bindings"
         @panel
 
         .bind('onEditorHide', this.onEditorHide)
@@ -170,14 +174,13 @@ class Annotator.Host extends Annotator
 
   scanDocument: (reason = "something happened") =>
     try
-      console.log "Analyzing host frame, because " + reason + "..."
+      @log.info "Analyzing host frame, because " + reason + "..."
       r = this._scanSync()
       scanTime = r.time
       scanTime = -1
-      console.log "Traversal+scan took " + scanTime + " ms."
+      @log.info "Traversal+scan took " + scanTime + " ms."
     catch e
-      console.log e.message
-      console.log e.stack
+      @log.error e
 
   _setupWrapper: ->
     @wrapper = @element

@@ -1,12 +1,12 @@
 /*
-** Annotator 1.2.6-dev-135280f
+** Annotator 1.2.6-dev-08d24b1
 ** https://github.com/okfn/annotator/
 **
 ** Copyright 2012 Aron Carroll, Rufus Pollock, and Nick Stenning.
 ** Dual licensed under the MIT and GPLv3 licenses.
 ** https://github.com/okfn/annotator/blob/master/LICENSE
 **
-** Built at: 2013-05-24 01:22:07Z
+** Built at: 2013-05-24 02:02:43Z
 */
 
 
@@ -2724,24 +2724,26 @@
       this.showEditor = __bind(this.showEditor, this);
       this.getHref = __bind(this.getHref, this);
       this.defaultNotify = __bind(this.defaultNotify, this);
-      var _ref3, _ref4, _ref5,
+      var givenName, myName, _ref3, _ref4, _ref5,
         _this = this;
 
       Annotator.__super__.constructor.apply(this, arguments);
-      if ((_ref3 = this.log) == null) {
-        this.log = getXLogger((_ref4 = options != null ? options.annotatorName : void 0) != null ? _ref4 : "Annotator");
+      givenName = (_ref3 = options != null ? options.annotatorName : void 0) != null ? _ref3 : "Annotator";
+      if ((_ref4 = this.log) == null) {
+        this.log = getXLogger(givenName);
       }
       this.log.info("Annotator constructor running.");
+      myName = this.log.name;
       if ((_ref5 = this.tasklog) == null) {
-        this.tasklog = getXLogger(this.log.name + " tasks");
+        this.tasklog = getXLogger(myName + " tasks");
       }
-      this.alog = getXLogger(this.log.name + " anchoring");
+      this.alog = getXLogger(myName + " anchoring");
       this.plugins = {};
       if (!Annotator.supported()) {
-        return this;
+        return;
       }
-      this.domMapper = new DomTextMapper();
-      this.domMatcher = new DomTextMatcher(this.domMapper);
+      this.domMapper = new DomTextMapper(myName + " mapper");
+      this.domMatcher = new DomTextMatcher(this.domMapper, myName + " matcher");
       this.tasks = new TaskManager("Annotator");
       this.tasks.addDefaultProgress(function(info) {
         return _this.defaultNotify(info);

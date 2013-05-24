@@ -53,7 +53,7 @@ class Hypothesis extends Annotator
     delete window.XLoggerStartTime
     @log ?= getXLogger "Hypothesis"
     @log.setLevel XLOG_LEVEL.DEBUG
-    @log.info "Constructor running."
+    @log.debug "Started constructor."
 
     super ($document.find 'body'), noScan: true
 
@@ -109,6 +109,7 @@ class Hypothesis extends Annotator
 
     # Reload the route after annotations are loaded
     this.subscribe 'annotationsLoaded', -> $route.reload()
+    @log.info "Finished constructor."
 
   _setupXDM: ->
     $location = @element.injector().get '$location'
@@ -147,7 +148,7 @@ class Hypothesis extends Annotator
       origin: $location.search().xdm
       scope: 'annotator:panel'
       window: $window.parent
-      onReady: => console.log "Sidepanel: channel is ready"
+      onReady: => @log.info "Sidepanel: channel is ready"
 
         # Dodge toolbars [DISABLE]
         #@provider.getMaxBottom (max) =>
@@ -173,6 +174,7 @@ class Hypothesis extends Annotator
     .bind('setLoggerStartTime', (ctx, timestamp) =>
       @log.debug "Setting logging start time."
       window.XLoggerStartTime = timestamp
+      @log.debug "Now we have consistent timing."
     )
 
 
@@ -183,7 +185,7 @@ class Hypothesis extends Annotator
     stringEndsWith = (string, suffix) ->
       suffix is string.substr string.length - suffix.length
 
-    console.log "Looking for synonym URLs for '" + href + "'..."
+    @log.info "Looking for synonym URLs for '" + href + "'..."
     results = []
     if stringStartsWith href, "http://elife.elifesciences.org/content"
       if stringEndsWith href, ".full-text.pdf"
@@ -360,11 +362,11 @@ class Hypothesis extends Annotator
             uri: href
         this.addPlugin 'Store', options
         this.patch_store this.plugins.Store
-        console.log "Loaded annotions for '" + href + "'."
+        @log.info "Loaded annotions for '" + href + "'."
         for href in this.getSynonymURLs href
-          console.log "Also loading annotations for: " + href
+          @log.info "Also loading annotations for: " + href
           this.plugins.Store._apiRequest 'search', uri: href, (data) =>
-            console.log "Found " + data.total + " annotations here.."
+            @log.info "Found " + data.total + " annotations here.."
             this.plugins.Store._onLoadAnnotationsFromSearch data
 
 

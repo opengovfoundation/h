@@ -1,6 +1,6 @@
 class Annotator.Plugin.Discovery extends Annotator.Plugin
   pluginInit: ->
-    console.log "Initializing discovery plugin."
+    @annotator.log.info "Initializing discovery plugin."
 
     svc = $('link')
     .filter ->
