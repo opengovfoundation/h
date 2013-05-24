@@ -17,6 +17,9 @@ class Annotator.Host extends Annotator
     tick: false
 
   constructor: (element, options) ->
+    @log ?= getXLogger "Annotator.Host"
+    @log.info "Constructor running."
+
     options.noScan = true
     super
     delete @options.noScan
@@ -38,11 +41,16 @@ class Annotator.Host extends Annotator
     .attr('src', "#{@app}#/?xdm=#{encodeURIComponent(hostOrigin)}")
     .appendTo(@wrapper)
     .addClass('annotator-frame annotator-outer annotator-collapsed')
-    .bind 'load', => this._setupXDM()
+    .bind 'load', =>
+      @log.info "Sidebar iframe content loaded"
+      this._setupXDM()
+      @panel.notify method: 'setLoggerStartTime', params: window.XLoggerStartTime
+
 
     # Load plugins
     for own name, opts of @options
       if not @plugins[name]
+        @log.debug "Loading plugin '" + name + "' with options", opts
         this.addPlugin(name, opts)
 
     # Scan the document text with the DOM Text libraries

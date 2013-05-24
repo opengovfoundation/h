@@ -1,21 +1,133 @@
 /*
-** Annotator 1.2.6-dev-d8adaf8
+** Annotator 1.2.6-dev-135280f
 ** https://github.com/okfn/annotator/
 **
 ** Copyright 2012 Aron Carroll, Rufus Pollock, and Nick Stenning.
 ** Dual licensed under the MIT and GPLv3 licenses.
 ** https://github.com/okfn/annotator/blob/master/LICENSE
 **
-** Built at: 2013-05-21 16:54:46Z
+** Built at: 2013-05-24 01:22:07Z
 */
 
+
 (function() {
-  var $, Annotator, Delegator, LinkParser, Range, TaskManager, fn, functions, g, gettext, util, _Annotator, _CompositeTask, _Task, _TaskGen, _gettext, _i, _j, _len, _len2, _ref, _ref2, _t,
-    __indexOf = Array.prototype.indexOf || function(item) { for (var i = 0, l = this.length; i < l; i++) { if (i in this && this[i] === item) return i; } return -1; },
-    __slice = Array.prototype.slice,
-    __hasProp = Object.prototype.hasOwnProperty,
-    __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor; child.__super__ = parent.prototype; return child; },
+  var $, Annotator, Delegator, LinkParser, Range, TaskManager, XLogger, fn, functions, g, gettext, util, _Annotator, _CompositeTask, _Task, _TaskGen, _gettext, _i, _j, _len, _len1, _ref, _ref1, _ref2, _ref3, _t,
+    __slice = [].slice,
+    __indexOf = [].indexOf || function(item) { for (var i = 0, l = this.length; i < l; i++) { if (i in this && this[i] === item) return i; } return -1; },
+    __hasProp = {}.hasOwnProperty,
+    __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; },
     __bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; };
+
+  window.XLOG_LEVEL = {
+    ERROR: 5,
+    WARN: 4,
+    INFO: 3,
+    DEBUG: 2,
+    TRACE: 1
+  };
+
+  XLogger = (function() {
+    function XLogger(name) {
+      this.name = name;
+      this.setLevel(XLOG_LEVEL.INFO);
+    }
+
+    XLogger.prototype.setLevel = function(level) {
+      if (level == null) {
+        throw new Error("Setting undefined level!");
+      }
+      return this.level = level;
+    };
+
+    XLogger.prototype.currentTimestamp = function() {
+      return new Date().getTime();
+    };
+
+    XLogger.prototype.elapsedTime = function() {
+      if (typeof XLoggerStartTime !== "undefined" && XLoggerStartTime !== null) {
+        return this.currentTimestamp() - XLoggerStartTime;
+      } else {
+        return "???";
+      }
+    };
+
+    XLogger.prototype.time = function() {
+      return "[" + this.elapsedTime() + " ms]";
+    };
+
+    XLogger.prototype._log = function(level, objects) {
+      var line, lines, obj, text, time, _i, _len, _results;
+
+      if (level >= this.level) {
+        time = this.time();
+        _results = [];
+        for (_i = 0, _len = objects.length; _i < _len; _i++) {
+          obj = objects[_i];
+          text = obj instanceof Error ? obj.stack : JSON.stringify(obj, null, 2);
+          lines = text.split("\n");
+          _results.push((function() {
+            var _j, _len1, _results1;
+
+            _results1 = [];
+            for (_j = 0, _len1 = lines.length; _j < _len1; _j++) {
+              line = lines[_j];
+              _results1.push(console.log(time + " '" + this.name + "': " + line));
+            }
+            return _results1;
+          }).call(this));
+        }
+        return _results;
+      }
+    };
+
+    XLogger.prototype.error = function() {
+      var objects;
+
+      objects = 1 <= arguments.length ? __slice.call(arguments, 0) : [];
+      return this._log(XLOG_LEVEL.ERROR, objects);
+    };
+
+    XLogger.prototype.warn = function() {
+      var objects;
+
+      objects = 1 <= arguments.length ? __slice.call(arguments, 0) : [];
+      return this._log(XLOG_LEVEL.WARN, objects);
+    };
+
+    XLogger.prototype.info = function() {
+      var objects;
+
+      objects = 1 <= arguments.length ? __slice.call(arguments, 0) : [];
+      return this._log(XLOG_LEVEL.INFO, objects);
+    };
+
+    XLogger.prototype.debug = function() {
+      var objects;
+
+      objects = 1 <= arguments.length ? __slice.call(arguments, 0) : [];
+      return this._log(XLOG_LEVEL.DEBUG, objects);
+    };
+
+    XLogger.prototype.trace = function() {
+      var objects;
+
+      objects = 1 <= arguments.length ? __slice.call(arguments, 0) : [];
+      return this._log(XLOG_LEVEL.TRACE, objects);
+    };
+
+    return XLogger;
+
+  })();
+
+  if ((_ref = window.XLoggerStartTime) == null) {
+    window.XLoggerStartTime = new Date().getTime();
+  }
+
+  if ((_ref1 = window.getXLogger) == null) {
+    window.getXLogger = function(name) {
+      return new XLogger(name);
+    };
+  }
 
   window.DomTextMapper = (function() {
     var CONTEXT_LEN, SCAN_JOB_LENGTH_MS, SELECT_CHILDREN_INSTEAD, USE_EMPTY_TEXT_WORKAROUND, USE_TABLE_TEXT_WORKAROUND, WHITESPACE;
@@ -32,21 +144,31 @@
 
     DomTextMapper.instances = [];
 
+    DomTextMapper.log = getXLogger("DomTextMapper class");
+
     DomTextMapper.changed = function(node, reason) {
-      var instance, _i, _len, _ref;
-      if (reason == null) reason = "no reason";
-      if (this.instances.length === 0) return;
-      _ref = this.instances;
-      for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-        instance = _ref[_i];
+      var dm, instance, _i, _len, _ref2;
+
+      if (reason == null) {
+        reason = "no reason";
+      }
+      if (this.instances.length === 0) {
+        return;
+      }
+      dm = this.instances[0];
+      this.log.debug("Node @ " + (dm.getPathTo(node)) + " has changed: " + reason);
+      _ref2 = this.instances;
+      for (_i = 0, _len = _ref2.length; _i < _len; _i++) {
+        instance = _ref2[_i];
         instance.performSyncUpdateOnNode(node);
       }
       return null;
     };
 
-    function DomTextMapper() {
+    function DomTextMapper(name) {
+      this.log = getXLogger(name != null ? name : "dom-text-mapper");
       this.setRealRoot();
-      window.DomTextMapper.instances.push(this);
+      DomTextMapper.instances.push(this);
     }
 
     DomTextMapper.prototype.setRootNode = function(rootNode) {
@@ -60,8 +182,11 @@
 
     DomTextMapper.prototype.setRootIframe = function(iframeId) {
       var iframe;
+
       iframe = window.document.getElementById(iframeId);
-      if (iframe == null) throw new Error("Can't find iframe with specified ID!");
+      if (iframe == null) {
+        throw new Error("Can't find iframe with specified ID!");
+      }
       this.rootWin = iframe.contentWindow;
       if (this.rootWin == null) {
         throw new Error("Can't access contents of the spefified iframe!");
@@ -81,12 +206,18 @@
     };
 
     DomTextMapper.prototype.documentChanged = function() {
-      return this.lastDOMChange = this.timestamp();
+      this.lastDOMChange = this.timestamp();
+      return this.log.debug("Registered document change.");
     };
 
     DomTextMapper.prototype.scanSync = function() {
       var node, pathStart, startTime, t1, t2, task;
-      if (this.domStableSince(this.lastScanned)) return this.path;
+
+      if (this.domStableSince(this.lastScanned)) {
+        this.log.debug("We have a valid DOM structure cache. Not scanning.");
+        return this.path;
+      }
+      this.log.debug("No valid cache, will have to do a scan.");
       startTime = this.timestamp();
       this.path = {};
       pathStart = this.getDefaultPath();
@@ -98,21 +229,27 @@
       this.finishTraverseSync(task);
       this.restoreSelection();
       t1 = this.timestamp();
-      console.log("Phase I (Path traversal) took " + (t1 - startTime) + " ms.");
+      this.log.info("Phase I (Path traversal) took " + (t1 - startTime) + " ms.");
       node = this.path[pathStart].node;
       this.collectPositions(node, pathStart, null, 0, 0);
       this.lastScanned = this.timestamp();
       this.corpus = this.path[pathStart].content;
       t2 = this.timestamp();
-      console.log("Phase II (offset calculation) took " + (t2 - t1) + " ms.");
+      this.log.info("Phase II (offset calculation) took " + (t2 - t1) + " ms.");
       this.path;
       return null;
     };
 
     DomTextMapper.prototype.scanAsync = function(onProgress, onFinished) {
-      var pathStart, task,
+      var pathStart, startTime, task,
         _this = this;
-      if (this.domStableSince(this.lastScanned)) onFinished(this.path);
+
+      if (this.domStableSince(this.lastScanned)) {
+        this.log.debug("We have a valid DOM structure cache. Not scanning.");
+        onFinished(this.path);
+      }
+      this.log.debug("No valid cache, will have to do a scan.");
+      startTime = this.timestamp();
       this.path = {};
       pathStart = this.getDefaultPath();
       task = {
@@ -121,6 +258,7 @@
       };
       this.finishTraverseAsync(task, onProgress, function() {
         var node;
+
         node = _this.path[pathStart].node;
         _this.collectPositions(node, pathStart, null, 0, 0);
         _this.lastScanned = _this.timestamp();
@@ -132,38 +270,61 @@
 
     DomTextMapper.prototype.selectPath = function(path, scroll) {
       var info, node;
-      if (scroll == null) scroll = false;
+
+      if (scroll == null) {
+        scroll = false;
+      }
       info = this.path[path];
-      if (info == null) throw new Error("I have no info about a node at " + path);
+      if (info == null) {
+        throw new Error("I have no info about a node at " + path);
+      }
       node = info != null ? info.node : void 0;
       node || (node = this.lookUpNode(info.path));
       return this.selectNode(node, scroll);
     };
 
     DomTextMapper.prototype.performSyncUpdateOnNode = function(node, escalating) {
-      var data, oldIndex, p, parentNode, parentPath, parentPathInfo, path, pathInfo, pathsToDrop, prefix, startTime, task, _i, _len, _ref;
-      if (escalating == null) escalating = false;
+      var data, oldIndex, p, parentNode, parentPath, parentPathInfo, path, pathInfo, pathsToDrop, prefix, prevSiblingPathInfo, startTime, task, _i, _len, _ref2;
+
+      if (escalating == null) {
+        escalating = false;
+      }
       if (node == null) {
         throw new Error("Called performSyncUpdateOnOde with a null node!");
       }
-      if (this.path == null) return;
+      if (this.path == null) {
+        return;
+      }
       startTime = this.timestamp();
-      if (!escalating) this.saveSelection();
+      if (!escalating) {
+        this.saveSelection();
+      }
       path = this.getPathTo(node);
       pathInfo = this.path[path];
       if (pathInfo == null) {
         this.performSyncUpdateOnNode(node.parentNode, true);
-        if (!escalating) this.restoreSelection();
+        if (!escalating) {
+          this.restoreSelection();
+        }
         return;
       }
+      this.log.debug("Performing update on node @ path " + path);
+      if (escalating) {
+        this.log.debug("(Escalated)");
+      }
+      this.log.trace("Updating data about " + path + ": ");
       if (pathInfo.node === node && pathInfo.content === this.getNodeContent(node, false)) {
+        this.log.trace("Good, the node and the overall content is still the same");
+        this.log.trace("Dropping obsolete path info for children...");
         prefix = path + "/";
         pathsToDrop = p;
         pathsToDrop = [];
-        _ref = this.path;
-        for (p in _ref) {
-          data = _ref[p];
-          if (this.stringStartsWith(p, prefix)) pathsToDrop.push(p);
+        _ref2 = this.path;
+        for (p in _ref2) {
+          data = _ref2[p];
+          if (this.stringStartsWith(p, prefix)) {
+            pathsToDrop.push(p);
+          }
         }
         for (_i = 0, _len = pathsToDrop.length; _i < _len; _i++) {
           p = pathsToDrop[_i];
@@ -174,8 +335,9 @@
           node: node
         };
         this.finishTraverseSync(task);
+        this.log.trace("Done. Collecting new path info...");
         if (pathInfo.node === this.pathStartNode) {
-          console.log("Ended up rescanning the whole doc.");
+          this.log.debug("Ended up rescanning the whole doc.");
           this.collectPositions(node, path, null, 0, 0);
         } else {
           parentPath = this.parentPath(path);
@@ -183,22 +345,28 @@
           if (parentPathInfo == null) {
             throw new Error("While performing update on node " + path + ", no path info found for parent path: " + parentPath);
           }
-          oldIndex = node === node.parentNode.firstChild ? 0 : this.path[this.getPathTo(node.previousSibling)].end - parentPathInfo.start;
+          oldIndex = node === node.parentNode.firstChild ? 0 : (prevSiblingPathInfo = this.path[this.getPathTo(node.previousSibling)], prevSiblingPathInfo.end - parentPathInfo.start);
           this.collectPositions(node, path, parentPathInfo.content, parentPathInfo.start, oldIndex);
         }
+        this.log.debug("Data update took " + (this.timestamp() - startTime) + " ms.");
       } else {
+        this.log.trace("Hm..node has been replaced, or overall content has changed!");
         if (pathInfo.node !== this.pathStartNode) {
-          parentNode = node.parentNode != null ? node.parentNode : (parentPath = this.parentPath(path), this.lookUpNode(parentPath));
+          this.log.trace("I guess I must go up one level.");
+          parentNode = node.parentNode != null ? (this.log.trace("Node has parent, using that."), node.parentNode) : (parentPath = this.parentPath(path), this.log.trace("Node has no parent, will look up " + parentPath), this.lookUpNode(parentPath));
           this.performSyncUpdateOnNode(parentNode, true);
         } else {
           throw new Error("Can not keep up with the changes, since even the node configured as path start node was replaced.");
         }
       }
-      if (!escalating) return this.restoreSelection();
+      if (!escalating) {
+        return this.restoreSelection();
+      }
     };
 
     DomTextMapper.prototype.getInfoForPath = function(path) {
       var result;
+
       if (this.path == null) {
         throw new Error("Can't get info before running a scan() !");
       }
@@ -218,6 +386,9 @@
 
     DomTextMapper.prototype.getMappingsForCharRanges = function(charRanges) {
       var charRange, mapping, _i, _len, _results;
+
+      log.debug("Getting mappings for charRanges:");
+      log.debug(charRanges);
       _results = [];
       for (_i = 0, _len = charRanges.length; _i < _len; _i++) {
         charRange = charRanges[_i];
@@ -227,14 +398,22 @@
     };
 
     DomTextMapper.prototype.getContentForPath = function(path) {
-      if (path == null) path = null;
-      if (path == null) path = this.getDefaultPath();
+      if (path == null) {
+        path = null;
+      }
+      if (path == null) {
+        path = this.getDefaultPath();
+      }
       return this.path[path].content;
     };
 
     DomTextMapper.prototype.getLengthForPath = function(path) {
-      if (path == null) path = null;
-      if (path == null) path = this.getDefaultPath();
+      if (path == null) {
+        path = null;
+      }
+      if (path == null) {
+        path = this.getDefaultPath();
+      }
       return this.path[path].length;
     };
 
@@ -244,14 +423,20 @@
 
     DomTextMapper.prototype.getContentForCharRange = function(start, end, path) {
       var text;
-      if (path == null) path = null;
+
+      if (path == null) {
+        path = null;
+      }
       text = this.getContentForPath(path).substr(start, end - start);
       return text.trim();
     };
 
     DomTextMapper.prototype.getContextForCharRange = function(start, end, path) {
       var content, prefix, prefixLen, prefixStart, suffix;
-      if (path == null) path = null;
+
+      if (path == null) {
+        path = null;
+      }
       content = this.getContentForPath(path);
       prefixStart = Math.max(0, start - CONTEXT_LEN);
       prefixLen = start - prefixStart;
@@ -261,21 +446,27 @@
     };
 
     DomTextMapper.prototype.getMappingsForCharRange = function(start, end) {
-      var endInfo, endMapping, endNode, endOffset, endPath, info, mappings, p, r, result, startInfo, startMapping, startNode, startOffset, startPath, _ref,
+      var endInfo, endMapping, endNode, endOffset, endPath, info, mappings, p, r, result, startInfo, startMapping, startNode, startOffset, startPath, _ref2,
         _this = this;
+
       if (!((start != null) && (end != null))) {
         throw new Error("start and end is required!");
       }
+      this.log.trace("Collecting nodes for [" + start + ":" + end + "]");
       if (!this.domStableSince(this.lastScanned)) {
         throw new Error("Can not get mappings, since the dom has changed since last scanned. Call scan first.");
       }
+      this.log.trace("Collecting mappings");
       mappings = [];
-      _ref = this.path;
-      for (p in _ref) {
-        info = _ref[p];
+      _ref2 = this.path;
+      for (p in _ref2) {
+        info = _ref2[p];
         if (info.atomic && this.regions_overlap(info.start, info.end, start, end)) {
           (function(info) {
             var full, mapping;
+
+            _this.log.trace("Checking " + info.path);
+            _this.log.trace(info);
             mapping = {
               element: info
             };
@@ -302,26 +493,28 @@
                 _this.computeSourcePositions(mapping);
                 mapping.yields = info.node.data.substr(mapping.startCorrected, mapping.endCorrected - mapping.startCorrected);
               } else if ((info.node.nodeType === Node.ELEMENT_NODE) && (info.node.tagName.toLowerCase() === "img")) {
-                console.log("Can not select a sub-string from the title of an image. Selecting all.");
+                _this.log.debug("Can not select a sub-string from the title of an image. Selecting all.");
                 mapping.full = true;
                 mapping.wanted = info.content;
               } else {
-                console.log("Warning: no idea how to handle partial mappings for node type " + info.node.nodeType);
+                _this.log.warn("Warning: no idea how to handle partial mappings for node type " + info.node.nodeType);
                 if (info.node.tagName != null) {
-                  console.log("Tag: " + info.node.tagName);
+                  _this.log.warn("Tag: " + info.node.tagName);
                 }
-                console.log("Selecting all.");
+                _this.log.warn("Selecting all.");
                 mapping.full = true;
                 mapping.wanted = info.content;
               }
             }
-            return mappings.push(mapping);
+            mappings.push(mapping);
+            return _this.log.trace("Done with " + info.path);
           })(info);
         }
       }
       if (mappings.length === 0) {
         throw new Error("No mappings found for [" + start + ":" + end + "]!");
       }
+      this.log.trace("Building range...");
       r = this.rootWin.document.createRange();
       startMapping = mappings[0];
       startNode = startMapping.element.node;
@@ -358,6 +551,7 @@
         },
         safeParent: r.commonAncestorContainer
       };
+      this.log.trace("Done collecting");
       return result;
     };
 
@@ -391,6 +585,7 @@
 
     DomTextMapper.prototype.getProperNodeName = function(node) {
       var nodeName;
+
       nodeName = node.nodeName;
       switch (nodeName) {
         case "#text":
@@ -406,10 +601,13 @@
 
     DomTextMapper.prototype.getNodePosition = function(node) {
       var pos, tmp;
+
       pos = 0;
       tmp = node;
       while (tmp) {
-        if (tmp.nodeName === node.nodeName) pos++;
+        if (tmp.nodeName === node.nodeName) {
+          pos++;
+        }
         tmp = tmp.previousSibling;
       }
       return pos;
@@ -417,6 +615,7 @@
 
     DomTextMapper.prototype.getPathSegment = function(node) {
       var name, pos;
+
       name = this.getProperNodeName(node);
       pos = this.getNodePosition(node);
       return name + (pos > 1 ? "[" + pos + "]" : "");
@@ -424,6 +623,7 @@
 
     DomTextMapper.prototype.getPathTo = function(node) {
       var xpath;
+
       xpath = '';
       while (node !== this.rootNode) {
         if (node == null) {
@@ -438,11 +638,13 @@
     };
 
     DomTextMapper.prototype.executeTraverseTask = function(task) {
-      var child, cont, invisiable, invisible, node, path, verbose, _i, _len, _ref, _ref2, _ref3;
+      var child, cont, invisiable, invisible, node, path, verbose, _i, _len, _ref2, _ref3, _ref4;
+
       node = task.node;
       this.underTraverse = path = task.path;
-      invisiable = (_ref = task.invisible) != null ? _ref : false;
-      verbose = (_ref2 = task.verbose) != null ? _ref2 : false;
+      invisiable = (_ref2 = task.invisible) != null ? _ref2 : false;
+      verbose = (_ref3 = task.verbose) != null ? _ref3 : false;
+      this.log.trace("Executing traverse task for path " + path);
       cont = this.getNodeContent(node, false);
       this.path[path] = {
         path: path,
@@ -451,18 +653,26 @@
         node: node
       };
       if (cont.length) {
-        if (verbose) console.log("Collected info about path " + path);
+        if (verbose) {
+          this.log.info("Collected info about path " + path);
+        } else {
+          this.log.trace("Collected info about path " + path);
+        }
         if (invisible) {
-          console.log("Something seems to be wrong. I see visible content @ " + path + ", while some of the ancestor nodes reported empty contents. Probably a new selection API bug....");
+          this.log.warn("Something seems to be wrong. I see visible content @ " + path + ", while some of the ancestor nodes reported empty contents." + " Probably a new selection API bug....");
         }
       } else {
-        if (verbose) console.log("Found no content at path " + path);
+        if (verbose) {
+          this.log.info("Found no content at path " + path);
+        } else {
+          this.log.trace("Found no content at path " + path);
+        }
         invisible = true;
       }
       if (node.hasChildNodes()) {
-        _ref3 = node.childNodes;
-        for (_i = 0, _len = _ref3.length; _i < _len; _i++) {
-          child = _ref3[_i];
+        _ref4 = node.childNodes;
+        for (_i = 0, _len = _ref4.length; _i < _len; _i++) {
+          child = _ref4[_i];
           this.traverseTasks.push({
             node: child,
             path: path + '/' + (this.getPathSegment(child)),
@@ -475,19 +685,22 @@
     };
 
     DomTextMapper.prototype.runTraverseRounds = function() {
-      var progress, roundStart, task, tasksDone,
+      var exception, progress, roundStart, task, tasksDone,
         _this = this;
+
       try {
         this.saveSelection();
         roundStart = this.timestamp();
         tasksDone = 0;
         while (this.traverseTasks.length && (this.timestamp() - roundStart < SCAN_JOB_LENGTH_MS)) {
+          this.log.trace("Queue length is: " + this.traverseTasks.length);
           task = this.traverseTasks.pop();
           this.executeTraverseTask(task);
           tasksDone += 1;
           if (!task.node.hasChildNodes()) {
             this.traverseCoveredChars += this.path[task.path].length;
           }
+          this.log.trace("Round covered " + tasksDone + " tasks " + "in " + (this.timestamp() - roundStart) + " ms." + " Covered chars: " + this.traverseCoveredChars);
         }
         this.restoreSelection();
         if (this.traverseOnProgress != null) {
@@ -501,17 +714,17 @@
         } else {
           return this.traverseOnFinished();
         }
-      } catch (exception) {
-        console.log("OOps. Internal error:");
-        console.log(exception);
-        return console.log(exception.stack);
+      } catch (_error) {
+        exception = _error;
+        return this.log.error("Internal error while traversing", exception);
       }
     };
 
     DomTextMapper.prototype.finishTraverseSync = function(rootTask) {
       var _results;
+
       if ((this.traverseTasks != null) && this.traverseTasks.size) {
-        throw new Error("Error: a DOM traverse is already in progress!");
+        throw new Error("A DOM traverse is already in progress!");
       }
       this.traverseTasks = [];
       this.executeTraverseTask(rootTask);
@@ -526,8 +739,9 @@
 
     DomTextMapper.prototype.finishTraverseAsync = function(rootTask, onProgress, onFinished) {
       var _this = this;
+
       if ((this.traverseTasks != null) && this.traverseTasks.size) {
-        throw new Error("Error: a DOM traverse is already in progress!");
+        throw new Error("A DOM traverse is already in progress!");
       }
       this.traverseTasks = [];
       this.saveSelection();
@@ -551,86 +765,97 @@
     };
 
     DomTextMapper.prototype.lookUpNode = function(path) {
-      var doc, node, results, _ref;
-      doc = (_ref = this.rootNode.ownerDocument) != null ? _ref : this.rootNode;
+      var doc, node, results, _ref2;
+
+      doc = (_ref2 = this.rootNode.ownerDocument) != null ? _ref2 : this.rootNode;
       results = doc.evaluate(path, this.rootNode, null, 0, null);
       return node = results.iterateNext();
     };
 
     DomTextMapper.prototype.saveSelection = function() {
-      var i, sel, _ref;
+      var i, sel, _i, _ref2, _ref3;
+
       if (this.savedSelection != null) {
-        console.log("Selection saved at:");
-        console.log(this.selectionSaved);
-        throw new Error("Selection already saved!");
+        throw new Error("Selection already saved! Here:" + this.selectionSaved + "\n\n" + "New attempt to save:");
       }
       sel = this.rootWin.getSelection();
-      for (i = 0, _ref = sel.rangeCount; 0 <= _ref ? i < _ref : i > _ref; 0 <= _ref ? i++ : i--) {
+      this.log.debug("Saving selection: " + sel.rangeCount + " ranges.");
+      for (i = _i = 0, _ref2 = sel.rangeCount; 0 <= _ref2 ? _i < _ref2 : _i > _ref2; i = 0 <= _ref2 ? ++_i : --_i) {
         this.savedSelection = sel.getRangeAt(i);
       }
       switch (sel.rangeCount) {
         case 0:
-          if (this.savedSelection == null) this.savedSelection = [];
+          if ((_ref3 = this.savedSelection) == null) {
+            this.savedSelection = [];
+          }
           break;
         case 1:
           this.savedSelection = [this.savedSelection];
       }
-      try {
-        throw new Error("Selection was saved here");
-      } catch (exception) {
-        return this.selectionSaved = exception.stack;
-      }
+      return this.selectionSaved = (new Error("")).stack;
     };
 
     DomTextMapper.prototype.restoreSelection = function() {
-      var range, sel, _i, _len, _ref;
-      if (this.savedSelection == null) throw new Error("No selection to restore.");
+      var range, sel, _i, _len, _ref2;
+
+      this.log.trace("Restoring selection: " + this.savedSelection.length + " ranges.");
+      if (this.savedSelection == null) {
+        throw new Error("No selection to restore.");
+      }
       sel = this.rootWin.getSelection();
       sel.removeAllRanges();
-      _ref = this.savedSelection;
-      for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-        range = _ref[_i];
+      _ref2 = this.savedSelection;
+      for (_i = 0, _len = _ref2.length; _i < _len; _i++) {
+        range = _ref2[_i];
         sel.addRange(range);
       }
       return delete this.savedSelection;
     };
 
     DomTextMapper.prototype.selectNode = function(node, scroll) {
-      var children, realRange, sel, sn, _ref;
-      if (scroll == null) scroll = false;
-      if (node == null) throw new Error("Called selectNode with null node!");
+      var children, exception, realRange, sel, sn, _ref2;
+
+      if (scroll == null) {
+        scroll = false;
+      }
+      if (node == null) {
+        throw new Error("Called selectNode with null node!");
+      }
       sel = this.rootWin.getSelection();
       sel.removeAllRanges();
       realRange = this.rootWin.document.createRange();
-      if (node.nodeType === Node.ELEMENT_NODE && node.hasChildNodes() && (_ref = node.tagName.toLowerCase(), __indexOf.call(SELECT_CHILDREN_INSTEAD, _ref) >= 0)) {
+      if (node.nodeType === Node.ELEMENT_NODE && node.hasChildNodes() && (_ref2 = node.tagName.toLowerCase(), __indexOf.call(SELECT_CHILDREN_INSTEAD, _ref2) >= 0)) {
         children = node.childNodes;
         realRange.setStartBefore(children[0]);
         realRange.setEndAfter(children[children.length - 1]);
         sel.addRange(realRange);
       } else {
-        if (USE_TABLE_TEXT_WORKAROUND && node.nodeType === Node.TEXT_NODE && node.parentNode.tagName.toLowerCase() === "table") {} else {
+        if (USE_TABLE_TEXT_WORKAROUND && node.nodeType === Node.TEXT_NODE && node.parentNode.tagName.toLowerCase() === "table") {
+
+        } else {
           try {
             realRange.setStartBefore(node);
             realRange.setEndAfter(node);
             sel.addRange(realRange);
-          } catch (exception) {
+          } catch (_error) {
+            exception = _error;
             if (!(USE_EMPTY_TEXT_WORKAROUND && this.isWhitespace(node))) {
-              console.log("Warning: failed to scan element @ " + this.underTraverse);
-              console.log("Content is: " + node.innerHTML);
-              console.log("We won't be able to properly anchor to any text inside this element.");
+              this.log.warn("Warning: failed to scan element @ " + this.underTraverse);
+              this.log.warn("Content is: " + node.innerHTML);
+              this.log.warn("We won't be able to properly anchor to any text inside this element.");
             }
           }
         }
       }
       if (scroll) {
         sn = node;
-        while ((sn != null) && !(sn.scrollIntoViewIfNeeded != null)) {
+        while ((sn != null) && (sn.scrollIntoViewIfNeeded == null)) {
           sn = sn.parentNode;
         }
         if (sn != null) {
           sn.scrollIntoViewIfNeeded();
         } else {
-          console.log("Failed to scroll to element. (Browser does not support scrollIntoViewIfNeeded?)");
+          this.log.warn("Failed to scroll to element. (Browser does not support scrollIntoViewIfNeeded?)");
         }
       }
       return sel;
@@ -643,20 +868,35 @@
 
     DomTextMapper.prototype.getNodeSelectionText = function(node, shouldRestoreSelection) {
       var sel, text;
-      if (shouldRestoreSelection == null) shouldRestoreSelection = true;
-      if (shouldRestoreSelection) this.saveSelection();
+
+      if (shouldRestoreSelection == null) {
+        shouldRestoreSelection = true;
+      }
+      if (shouldRestoreSelection) {
+        this.saveSelection();
+      }
       sel = this.selectNode(node);
       text = this.readSelectionText(sel);
-      if (shouldRestoreSelection) this.restoreSelection();
+      if (shouldRestoreSelection) {
+        this.restoreSelection();
+      }
       return text;
     };
 
     DomTextMapper.prototype.computeSourcePositions = function(match) {
       var dc, displayEnd, displayIndex, displayStart, displayText, sc, sourceEnd, sourceIndex, sourceStart, sourceText;
+
+      this.log.trace("In computeSourcePosition");
+      this.log.trace(match.element.path);
+      this.log.trace(match.element.node.data);
+      this.log.trace("Calculating source position at " + match.element.path);
       sourceText = match.element.node.data.replace(/\n/g, " ");
+      this.log.trace("sourceText is '" + sourceText + "'");
       displayText = match.element.content;
+      this.log.trace("displayText is '" + displayText + "'");
       displayStart = match.start != null ? match.start : 0;
       displayEnd = match.end != null ? match.end : displayText.length;
+      this.log.trace("Display charRange is: " + displayStart + "-" + displayEnd);
       if (displayEnd === 0) {
         match.startCorrected = 0;
         match.endCorrected = 0;
@@ -668,44 +908,62 @@
         sc = sourceText[sourceIndex];
         dc = displayText[displayIndex];
         if (sc === dc) {
-          if (displayIndex === displayStart) sourceStart = sourceIndex;
+          if (displayIndex === displayStart) {
+            sourceStart = sourceIndex;
+          }
           displayIndex++;
-          if (displayIndex === displayEnd) sourceEnd = sourceIndex + 1;
+          if (displayIndex === displayEnd) {
+            sourceEnd = sourceIndex + 1;
+          }
         }
         sourceIndex++;
       }
       match.startCorrected = sourceStart;
       match.endCorrected = sourceEnd;
+      this.log.trace("computeSourcePosition done. Corrected charRange is: " + match.startCorrected + "-" + match.endCorrected);
       return null;
     };
 
     DomTextMapper.prototype.getNodeContent = function(node, shouldRestoreSelection) {
-      if (shouldRestoreSelection == null) shouldRestoreSelection = true;
+      if (shouldRestoreSelection == null) {
+        shouldRestoreSelection = true;
+      }
       return this.getNodeSelectionText(node, shouldRestoreSelection);
     };
 
     DomTextMapper.prototype.collectPositions = function(node, path, parentContent, parentIndex, index) {
       var atomic, child, childPath, children, content, endIndex, i, newCount, nodeName, oldCount, pathInfo, pos, startIndex, typeCount;
-      if (parentContent == null) parentContent = null;
-      if (parentIndex == null) parentIndex = 0;
-      if (index == null) index = 0;
+
+      if (parentContent == null) {
+        parentContent = null;
+      }
+      if (parentIndex == null) {
+        parentIndex = 0;
+      }
+      if (index == null) {
+        index = 0;
+      }
+      this.log.trace("Scanning path " + path);
       pathInfo = this.path[path];
       if (pathInfo == null) {
-        console.log("Warning: have no info about this node:");
-        console.log(node);
-        console.log("This probably was _not_ here last time.");
-        console.log("Expect problems.");
+        this.log.error("I have no info about " + path + ". This should not happen.");
+        this.log.error("Node:");
+        this.log.error(node);
+        this.log.error("This probably was _not_ here last time. Expect problems.");
         return index;
       }
       content = pathInfo != null ? pathInfo.content : void 0;
-      if (!(content != null) || content === "") {
+      if ((content == null) || content === "") {
         pathInfo.start = parentIndex + index;
         pathInfo.end = parentIndex + index;
         pathInfo.atomic = false;
         return index;
       }
       startIndex = parentContent != null ? parentContent.indexOf(content, index) : index;
-      if (startIndex === -1) return index;
+      if (startIndex === -1) {
+        this.log.trace("Content of this not is not present in content of parent, " + "at path " + path);
+        return index;
+      }
       endIndex = startIndex + content.length;
       atomic = !node.hasChildNodes();
       pathInfo.start = parentIndex + startIndex;
@@ -734,16 +992,18 @@
 
     DomTextMapper.prototype.isWhitespace = function(node) {
       var child, mightBeEmpty, result;
+
       result = (function() {
-        var _i, _len, _ref;
+        var _i, _len, _ref2;
+
         switch (node.nodeType) {
           case Node.TEXT_NODE:
             return WHITESPACE.test(node.data);
           case Node.ELEMENT_NODE:
             mightBeEmpty = true;
-            _ref = node.childNodes;
-            for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-              child = _ref[_i];
+            _ref2 = node.childNodes;
+            for (_i = 0, _len = _ref2.length; _i < _len; _i++) {
+              child = _ref2[_i];
               mightBeEmpty = mightBeEmpty && this.isWhitespace(child);
             }
             return mightBeEmpty;
@@ -759,8 +1019,8 @@
   })();
 
   window.DTM_ExactMatcher = (function() {
-
-    function DTM_ExactMatcher() {
+    function DTM_ExactMatcher(log) {
+      this.log = log != null ? log : getXLogger("DMP exact matcher");
       this.distinct = true;
       this.caseSensitive = false;
     }
@@ -776,8 +1036,14 @@
     DTM_ExactMatcher.prototype.search = function(text, pattern) {
       var i, index, pLen, results,
         _this = this;
-      if (text == null) throw new Error("Called search with null text!");
-      if (pattern == null) throw new Error("Called search with null pattern!");
+
+      if (text == null) {
+        throw new Error("Called search with null text!");
+      }
+      if (pattern == null) {
+        throw new Error("Called search with null pattern!");
+      }
+      this.log.trace("Searching for '" + pattern + "' in '" + text + "'.");
       pLen = pattern.length;
       results = [];
       index = 0;
@@ -787,6 +1053,7 @@
       }
       while ((i = text.indexOf(pattern)) > -1) {
         (function() {
+          _this.log.trace("Found '" + pattern + "' @ " + i + " (=" + (index + i) + ")");
           results.push({
             start: index + i,
             end: index + i + pLen
@@ -808,8 +1075,8 @@
   })();
 
   window.DTM_RegexMatcher = (function() {
-
-    function DTM_RegexMatcher() {
+    function DTM_RegexMatcher(log) {
+      this.log = log != null ? log : getXLogger("DMP regex matcher");
       this.caseSensitive = false;
     }
 
@@ -819,8 +1086,13 @@
 
     DTM_RegexMatcher.prototype.search = function(text, pattern) {
       var m, re, _results;
-      if (text == null) throw new Error("Called search with null text!");
-      if (pattern == null) throw new Error("Called search with null pattern!");
+
+      if (text == null) {
+        throw new Error("Called search with null text!");
+      }
+      if (pattern == null) {
+        throw new Error("Called search with null pattern!");
+      }
       re = new RegExp(pattern, this.caseSensitive ? "g" : "gi");
       _results = [];
       while (m = re.exec(text)) {
@@ -837,8 +1109,8 @@
   })();
 
   window.DTM_DMPMatcher = (function() {
-
-    function DTM_DMPMatcher() {
+    function DTM_DMPMatcher(log) {
+      this.log = log != null ? log : getXLogger("DMP fuzzy matcher");
       this.dmp = new diff_match_patch;
       this.dmp.Diff_Timeout = 0;
       this.caseSensitive = false;
@@ -878,10 +1150,20 @@
 
     DTM_DMPMatcher.prototype.search = function(text, pattern, expectedStartLoc, options) {
       var endIndex, endLen, endLoc, endPos, endSlice, found, matchLen, maxLen, pLen, result, startIndex, startLen, startPos, startSlice;
-      if (expectedStartLoc == null) expectedStartLoc = 0;
-      if (options == null) options = {};
-      if (text == null) throw new Error("Called search with null text!");
-      if (pattern == null) throw new Error("Called search with null pattern!");
+
+      if (expectedStartLoc == null) {
+        expectedStartLoc = 0;
+      }
+      if (options == null) {
+        options = {};
+      }
+      if (text == null) {
+        throw new Error("Called search with null text!");
+      }
+      if (pattern == null) {
+        throw new Error("Called search with null pattern!");
+      }
+      this.log.trace("In dtm search. text: '" + text + "', pattern: '" + pattern + "', expectedStartLoc: " + expectedStartLoc + ", options:", options);
       if (expectedStartLoc < 0) {
         throw new Error("Can't search at negative indices!");
       }
@@ -911,11 +1193,19 @@
                 start: startIndex,
                 end: endPos.end
               };
+            } else {
+              this.log.trace("Sorry, matchLen (" + matchLen + ") is not between " + 0.5 * pLen + " and " + 1.5 * pLen);
             }
+          } else {
+            this.log.trace("endSlice ('" + endSlice + "') not found");
           }
+        } else {
+          this.log.trace("startSlice ('" + startSlice + "') not found");
         }
       }
-      if (result == null) return [];
+      if (result == null) {
+        return [];
+      }
       if (options.withLevenhstein || options.withDiff) {
         found = text.substr(result.start, result.end - result.start);
         result.diff = this.dmp.diff_main(pattern, found);
@@ -932,6 +1222,7 @@
 
     DTM_DMPMatcher.prototype.compare = function(text1, text2) {
       var result;
+
       if (!((text1 != null) && (text2 != null))) {
         throw new Error("Can not compare non-existing strings!");
       }
@@ -946,9 +1237,13 @@
 
     DTM_DMPMatcher.prototype.searchForSlice = function(text, slice, expectedStartLoc) {
       var dneIndex, endIndex, expectedDneLoc, expectedEndLoc, nrettap, r1, r2, result, startIndex, txet;
+
+      this.log.trace("searchForSlice: '" + text + "', '" + slice + "', " + expectedStartLoc);
       r1 = this.dmp.match_main(text, slice, expectedStartLoc);
       startIndex = r1.index;
-      if (startIndex === -1) return null;
+      if (startIndex === -1) {
+        return null;
+      }
       txet = this._reverse(text);
       nrettap = this._reverse(slice);
       expectedEndLoc = startIndex + slice.length;
@@ -967,7 +1262,6 @@
   })();
 
   window.DomTextMatcher = (function() {
-
     DomTextMatcher.prototype.setRootNode = function(rootNode) {
       return this.mapper.setRootNode(rootNode);
     };
@@ -991,12 +1285,14 @@
     DomTextMatcher.prototype.scanAsync = function(onProgress, onFinished) {
       var t0,
         _this = this;
+
       if (onFinished == null) {
         throw new Error("Called scan() with no onFinished argument!");
       }
       t0 = this.timestamp();
       this.mapper.scanAsync(onProgress, function(data) {
         var t1;
+
         t1 = _this.timestamp();
         return onFinished({
           time: t1 - t0,
@@ -1009,6 +1305,7 @@
     DomTextMatcher.prototype.scanPromise = function() {
       var dfd, onFinished, onProgress,
         _this = this;
+
       dfd = new jQuery.Deferred();
       onProgress = function(data) {
         return dfd.notify({
@@ -1025,6 +1322,7 @@
 
     DomTextMatcher.prototype.scanSync = function() {
       var data, t0, t1;
+
       t0 = this.timestamp();
       data = this.mapper.scanSync();
       t1 = this.timestamp();
@@ -1039,31 +1337,52 @@
     };
 
     DomTextMatcher.prototype.searchExact = function(pattern, distinct, caseSensitive, path) {
-      if (distinct == null) distinct = true;
-      if (caseSensitive == null) caseSensitive = false;
-      if (path == null) path = null;
-      if (!this.pm) this.pm = new window.DTM_ExactMatcher;
+      if (distinct == null) {
+        distinct = true;
+      }
+      if (caseSensitive == null) {
+        caseSensitive = false;
+      }
+      if (path == null) {
+        path = null;
+      }
+      if (!this.pm) {
+        this.pm = new window.DTM_ExactMatcher;
+      }
       this.pm.setDistinct(distinct);
       this.pm.setCaseSensitive(caseSensitive);
       return this.search(this.pm, pattern, null, path);
     };
 
     DomTextMatcher.prototype.searchRegex = function(pattern, caseSensitive, path) {
-      if (caseSensitive == null) caseSensitive = false;
-      if (path == null) path = null;
-      if (!this.rm) this.rm = new window.DTM_RegexMatcher;
+      if (caseSensitive == null) {
+        caseSensitive = false;
+      }
+      if (path == null) {
+        path = null;
+      }
+      if (!this.rm) {
+        this.rm = new window.DTM_RegexMatcher;
+      }
       this.rm.setCaseSensitive(caseSensitive);
       return this.search(this.rm, pattern, null, path);
     };
 
     DomTextMatcher.prototype.searchFuzzy = function(pattern, pos, caseSensitive, path, options) {
-      var _ref, _ref2;
-      if (caseSensitive == null) caseSensitive = false;
-      if (path == null) path = null;
-      if (options == null) options = {};
+      var _ref2, _ref3;
+
+      if (caseSensitive == null) {
+        caseSensitive = false;
+      }
+      if (path == null) {
+        path = null;
+      }
+      if (options == null) {
+        options = {};
+      }
       this.ensureDMP();
-      this.dmp.setMatchDistance((_ref = options.matchDistance) != null ? _ref : 1000);
-      this.dmp.setMatchThreshold((_ref2 = options.matchThreshold) != null ? _ref2 : 0.5);
+      this.dmp.setMatchDistance((_ref2 = options.matchDistance) != null ? _ref2 : 1000);
+      this.dmp.setMatchThreshold((_ref3 = options.matchThreshold) != null ? _ref3 : 0.5);
       this.dmp.setCaseSensitive(caseSensitive);
       return this.search(this.dmp, pattern, pos, path, options);
     };
@@ -1073,20 +1392,31 @@
     };
 
     DomTextMatcher.prototype.searchFuzzyWithContext = function(prefix, suffix, pattern, expectedStart, expectedEnd, caseSensitive, path, options) {
-      var analysis, charRange, expectedPrefixStart, expectedSuffixStart, k, len, mappings, match, matchThreshold, obj, patternLength, prefixEnd, prefixResult, remainingText, suffixResult, suffixStart, v, _i, _len, _ref, _ref2, _ref3, _ref4;
-      if (expectedStart == null) expectedStart = null;
-      if (expectedEnd == null) expectedEnd = null;
-      if (caseSensitive == null) caseSensitive = false;
-      if (path == null) path = null;
-      if (options == null) options = {};
+      var analysis, charRange, expectedPrefixStart, expectedSuffixStart, k, len, mappings, match, matchThreshold, obj, patternLength, prefixEnd, prefixResult, remainingText, suffixResult, suffixStart, v, _i, _len, _ref2, _ref3, _ref4, _ref5;
+
+      if (expectedStart == null) {
+        expectedStart = null;
+      }
+      if (expectedEnd == null) {
+        expectedEnd = null;
+      }
+      if (caseSensitive == null) {
+        caseSensitive = false;
+      }
+      if (path == null) {
+        path = null;
+      }
+      if (options == null) {
+        options = {};
+      }
       this.ensureDMP();
       if (!((prefix != null) && (suffix != null))) {
         throw new Error("Can not do a context-based fuzzy search with missing context!");
       }
       len = this.mapper.getDocLength();
       expectedPrefixStart = expectedStart != null ? expectedStart - prefix.length : len / 2;
-      this.dmp.setMatchDistance((_ref = options.contextMatchDistance) != null ? _ref : len * 2);
-      this.dmp.setMatchThreshold((_ref2 = options.contextMatchThreshold) != null ? _ref2 : 0.5);
+      this.dmp.setMatchDistance((_ref2 = options.contextMatchDistance) != null ? _ref2 : len * 2);
+      this.dmp.setMatchThreshold((_ref3 = options.contextMatchThreshold) != null ? _ref3 : 0.5);
       prefixResult = this.dmp.search(this.mapper.corpus, prefix, expectedPrefixStart);
       if (!prefixResult.length) {
         return {
@@ -1108,14 +1438,14 @@
         start: prefixEnd,
         end: suffixStart
       };
-      matchThreshold = (_ref3 = options.patternMatchThreshold) != null ? _ref3 : 0.5;
+      matchThreshold = (_ref4 = options.patternMatchThreshold) != null ? _ref4 : 0.5;
       analysis = this.analyzeMatch(pattern, charRange, true);
-      if ((!(pattern != null)) || analysis.exact || (analysis.comparison.errorLevel <= matchThreshold)) {
+      if ((pattern == null) || analysis.exact || (analysis.comparison.errorLevel <= matchThreshold)) {
         mappings = this.mapper.getMappingsForCharRange(prefixEnd, suffixStart);
         match = {};
-        _ref4 = [charRange, analysis, mappings];
-        for (_i = 0, _len = _ref4.length; _i < _len; _i++) {
-          obj = _ref4[_i];
+        _ref5 = [charRange, analysis, mappings];
+        for (_i = 0, _len = _ref5.length; _i < _len; _i++) {
+          obj = _ref5[_i];
           for (k in obj) {
             v = obj[k];
             match[k] = v;
@@ -1125,38 +1455,55 @@
           matches: [match]
         };
       }
+      this.log.debug("Rejecting the match, because error level is too high. (" + errorLevel + ")");
       return {
         matches: []
       };
     };
 
-    function DomTextMatcher(domTextMapper) {
+    function DomTextMatcher(domTextMapper, name) {
+      if (name == null) {
+        name = "matcher";
+      }
+      this.log = getXLogger(name);
       this.mapper = domTextMapper;
     }
 
     DomTextMatcher.prototype.search = function(matcher, pattern, pos, path, options) {
-      var fuzzyComparison, matches, result, t0, t1, t2, t3, textMatch, textMatches, _fn, _i, _len, _ref,
+      var fuzzyComparison, matches, result, t0, t1, t2, t3, textMatch, textMatches, _fn, _i, _len, _ref2,
         _this = this;
-      if (path == null) path = null;
-      if (options == null) options = {};
-      if (pattern == null) throw new Error("Can't search for null pattern!");
+
+      if (path == null) {
+        path = null;
+      }
+      if (options == null) {
+        options = {};
+      }
+      if (pattern == null) {
+        throw new Error("Can't search for null pattern!");
+      }
       pattern = pattern.trim();
-      if (pattern == null) throw new Error("Can't search an for empty pattern!");
-      fuzzyComparison = (_ref = options.withFuzzyComparison) != null ? _ref : false;
+      if (pattern == null) {
+        throw new Error("Can't search an for empty pattern!");
+      }
+      fuzzyComparison = (_ref2 = options.withFuzzyComparison) != null ? _ref2 : false;
       t0 = this.timestamp();
-      if (path != null) this.scan();
+      if (path != null) {
+        this.scan();
+      }
       t1 = this.timestamp();
       textMatches = matcher.search(this.mapper.corpus, pattern, pos, options);
       t2 = this.timestamp();
       matches = [];
       _fn = function(textMatch) {
-        var analysis, k, mappings, match, obj, v, _j, _len2, _ref2;
+        var analysis, k, mappings, match, obj, v, _j, _len1, _ref3;
+
         analysis = _this.analyzeMatch(pattern, textMatch, fuzzyComparison);
         mappings = _this.mapper.getMappingsForCharRange(textMatch.start, textMatch.end);
         match = {};
-        _ref2 = [textMatch, analysis, mappings];
-        for (_j = 0, _len2 = _ref2.length; _j < _len2; _j++) {
-          obj = _ref2[_j];
+        _ref3 = [textMatch, analysis, mappings];
+        for (_j = 0, _len1 = _ref3.length; _j < _len1; _j++) {
+          obj = _ref3[_j];
           for (k in obj) {
             v = obj[k];
             match[k] = v;
@@ -1188,7 +1535,10 @@
 
     DomTextMatcher.prototype.analyzeMatch = function(pattern, charRange, useFuzzy) {
       var expected, found, result;
-      if (useFuzzy == null) useFuzzy = false;
+
+      if (useFuzzy == null) {
+        useFuzzy = false;
+      }
       expected = this.normalizeString(pattern);
       found = this.normalizeString(this.mapper.getContentForCharRange(charRange.start, charRange.end));
       result = {
@@ -1234,7 +1584,7 @@
     return gettext(msgid);
   };
 
-  if (!(typeof jQuery !== "undefined" && jQuery !== null ? (_ref = jQuery.fn) != null ? _ref.jquery : void 0 : void 0)) {
+  if (!(typeof jQuery !== "undefined" && jQuery !== null ? (_ref2 = jQuery.fn) != null ? _ref2.jquery : void 0 : void 0)) {
     console.error(_t("Annotator requires jQuery: have you included lib/vendor/jquery.js?"));
   }
 
@@ -1246,8 +1596,10 @@
 
   $.flatten = function(array) {
     var flatten;
+
     flatten = function(ary) {
       var el, flat, _i, _len;
+
       flat = [];
       for (_i = 0, _len = ary.length; _i < _len; _i++) {
         el = ary[_i];
@@ -1261,9 +1613,11 @@
   $.plugin = function(name, object) {
     return jQuery.fn[name] = function(options) {
       var args;
+
       args = Array.prototype.slice.call(arguments, 1);
       return this.each(function() {
         var instance;
+
         instance = $.data(this, name);
         if (instance) {
           return options && instance[options].apply(instance, args);
@@ -1277,8 +1631,10 @@
 
   $.fn.textNodes = function() {
     var getTextNodes;
+
     getTextNodes = function(node) {
       var nodes;
+
       if (node && node.nodeType !== 3) {
         nodes = [];
         if (node.nodeType !== 8) {
@@ -1300,8 +1656,10 @@
 
   $.fn.xpath = function(relativeRoot) {
     var jq;
+
     jq = this.map(function() {
       var elem, idx, path, tagName;
+
       path = '';
       elem = this;
       while (elem && elem.nodeType === 1 && elem !== relativeRoot) {
@@ -1321,7 +1679,9 @@
   };
 
   $.fn.escape = function(html) {
-    if (arguments.length) return this.html($.escape(html));
+    if (arguments.length) {
+      return this.html($.escape(html));
+    }
     return this.html();
   };
 
@@ -1330,15 +1690,17 @@
   functions = ["log", "debug", "info", "warn", "exception", "assert", "dir", "dirxml", "trace", "group", "groupEnd", "groupCollapsed", "time", "timeEnd", "profile", "profileEnd", "count", "clear", "table", "error", "notifyFirebug", "firebug", "userObjects"];
 
   if (typeof console !== "undefined" && console !== null) {
-    if (!(console.group != null)) {
+    if (console.group == null) {
       console.group = function(name) {
         return console.log("GROUP: ", name);
       };
     }
-    if (!(console.groupCollapsed != null)) console.groupCollapsed = console.group;
+    if (console.groupCollapsed == null) {
+      console.groupCollapsed = console.group;
+    }
     for (_i = 0, _len = functions.length; _i < _len; _i++) {
       fn = functions[_i];
-      if (!(console[fn] != null)) {
+      if (console[fn] == null) {
         console[fn] = function() {
           return console.log(_t("Not implemented:") + (" console." + name));
         };
@@ -1346,24 +1708,25 @@
     }
   } else {
     this.console = {};
-    for (_j = 0, _len2 = functions.length; _j < _len2; _j++) {
+    for (_j = 0, _len1 = functions.length; _j < _len1; _j++) {
       fn = functions[_j];
       this.console[fn] = function() {};
     }
     this.console['error'] = function() {
       var args;
+
       args = 1 <= arguments.length ? __slice.call(arguments, 0) : [];
       return alert("ERROR: " + (args.join(', ')));
     };
     this.console['warn'] = function() {
       var args;
+
       args = 1 <= arguments.length ? __slice.call(arguments, 0) : [];
       return alert("WARNING: " + (args.join(', ')));
     };
   }
 
   Delegator = (function() {
-
     Delegator.prototype.events = {};
 
     Delegator.prototype.options = {};
@@ -1378,12 +1741,13 @@
     }
 
     Delegator.prototype.addEvents = function() {
-      var event, functionName, sel, selector, _k, _ref2, _ref3, _results;
-      _ref2 = this.events;
+      var event, functionName, sel, selector, _k, _ref3, _ref4, _results;
+
+      _ref3 = this.events;
       _results = [];
-      for (sel in _ref2) {
-        functionName = _ref2[sel];
-        _ref3 = sel.split(' '), selector = 2 <= _ref3.length ? __slice.call(_ref3, 0, _k = _ref3.length - 1) : (_k = 0, []), event = _ref3[_k++];
+      for (sel in _ref3) {
+        functionName = _ref3[sel];
+        _ref4 = sel.split(' '), selector = 2 <= _ref4.length ? __slice.call(_ref4, 0, _k = _ref4.length - 1) : (_k = 0, []), event = _ref4[_k++];
         _results.push(this.addEvent(selector.join(' '), event, functionName));
       }
       return _results;
@@ -1392,11 +1756,14 @@
     Delegator.prototype.addEvent = function(bindTo, event, functionName) {
       var closure, isBlankSelector,
         _this = this;
+
       closure = function() {
         return _this[functionName].apply(_this, arguments);
       };
       isBlankSelector = typeof bindTo === 'string' && bindTo.replace(/\s+/g, '') === '';
-      if (isBlankSelector) bindTo = this.element;
+      if (isBlankSelector) {
+        bindTo = this.element;
+      }
       if (typeof bindTo === 'string') {
         this.element.delegate(bindTo, event, closure);
       } else {
@@ -1421,6 +1788,7 @@
 
     Delegator.prototype.subscribe = function(event, callback) {
       var closure;
+
       closure = function() {
         return callback.apply(this, [].slice.call(arguments, 1));
       };
@@ -1440,13 +1808,15 @@
 
   Delegator.natives = (function() {
     var key, specials, val;
+
     specials = (function() {
-      var _ref2, _results;
-      _ref2 = jQuery.event.special;
+      var _ref3, _results;
+
+      _ref3 = jQuery.event.special;
       _results = [];
-      for (key in _ref2) {
-        if (!__hasProp.call(_ref2, key)) continue;
-        val = _ref2[key];
+      for (key in _ref3) {
+        if (!__hasProp.call(_ref3, key)) continue;
+        val = _ref3[key];
         _results.push(key);
       }
       return _results;
@@ -1478,9 +1848,14 @@
 
   Range.nodeFromXPath = function(xpath, root) {
     var customResolver, evaluateXPath, namespace, node, segment;
-    if (root == null) root = document;
+
+    if (root == null) {
+      root = document;
+    }
     evaluateXPath = function(xp, nsResolver) {
-      if (nsResolver == null) nsResolver = null;
+      if (nsResolver == null) {
+        nsResolver = null;
+      }
       return document.evaluate('.' + xp, root, nsResolver, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
     };
     if (!$.isXMLDoc(document.documentElement)) {
@@ -1490,11 +1865,12 @@
       node = evaluateXPath(xpath, customResolver);
       if (!node) {
         xpath = ((function() {
-          var _k, _len3, _ref2, _results;
-          _ref2 = xpath.split('/');
+          var _k, _len2, _ref3, _results;
+
+          _ref3 = xpath.split('/');
           _results = [];
-          for (_k = 0, _len3 = _ref2.length; _k < _len3; _k++) {
-            segment = _ref2[_k];
+          for (_k = 0, _len2 = _ref3.length; _k < _len2; _k++) {
+            segment = _ref3[_k];
             if (segment && segment.indexOf(':') === -1) {
               _results.push(segment.replace(/^([a-z]+)/, 'xhtml:$1'));
             } else {
@@ -1518,7 +1894,6 @@
   };
 
   Range.RangeError = (function(_super) {
-
     __extends(RangeError, _super);
 
     function RangeError(type, message, parent) {
@@ -1533,7 +1908,6 @@
   })(Error);
 
   Range.BrowserRange = (function() {
-
     function BrowserRange(obj) {
       this.commonAncestorContainer = obj.commonAncestorContainer;
       this.startContainer = obj.startContainer;
@@ -1543,7 +1917,8 @@
     }
 
     BrowserRange.prototype.normalize = function(root) {
-      var changed, isImg, it, node, nr, offset, p, r, _k, _len3, _ref2;
+      var changed, isImg, it, node, nr, offset, p, r, _k, _len2, _ref3;
+
       if (this.tainted) {
         console.error(_t("You may only call normalize() once on a BrowserRange!"));
         return false;
@@ -1552,9 +1927,9 @@
       }
       r = {};
       nr = {};
-      _ref2 = ['start', 'end'];
-      for (_k = 0, _len3 = _ref2.length; _k < _len3; _k++) {
-        p = _ref2[_k];
+      _ref3 = ['start', 'end'];
+      for (_k = 0, _len2 = _ref3.length; _k < _len2; _k++) {
+        p = _ref3[_k];
         node = this[p + 'Container'];
         offset = this[p + 'Offset'];
         if (node.nodeType === Node.ELEMENT_NODE) {
@@ -1625,7 +2000,6 @@
   })();
 
   Range.NormalizedRange = (function() {
-
     function NormalizedRange(obj) {
       this.commonAncestor = obj.commonAncestor;
       this.start = obj.start;
@@ -1637,17 +2011,20 @@
     };
 
     NormalizedRange.prototype.limit = function(bounds) {
-      var nodes, parent, startParents, _k, _len3, _ref2;
+      var nodes, parent, startParents, _k, _len2, _ref3;
+
       nodes = $.grep(this.textNodes(), function(node) {
         return node.parentNode === bounds || $.contains(bounds, node.parentNode);
       });
-      if (!nodes.length) return null;
+      if (!nodes.length) {
+        return null;
+      }
       this.start = nodes[0];
       this.end = nodes[nodes.length - 1];
       startParents = $(this.start).parents();
-      _ref2 = $(this.end).parents();
-      for (_k = 0, _len3 = _ref2.length; _k < _len3; _k++) {
-        parent = _ref2[_k];
+      _ref3 = $(this.end).parents();
+      for (_k = 0, _len2 = _ref3.length; _k < _len2; _k++) {
+        parent = _ref3[_k];
         if (startParents.index(parent) !== -1) {
           this.commonAncestor = parent;
           break;
@@ -1658,8 +2035,10 @@
 
     NormalizedRange.prototype.serialize = function(root, ignoreSelector) {
       var end, serialization, start;
+
       serialization = function(node, isEnd) {
-        var isImg, n, nodes, offset, origParent, textNodes, xpath, _k, _len3;
+        var isImg, n, nodes, offset, origParent, textNodes, xpath, _k, _len2;
+
         if (ignoreSelector) {
           origParent = $(node).parents(":not(" + ignoreSelector + ")").eq(0);
         } else {
@@ -1669,7 +2048,7 @@
         textNodes = origParent.textNodes();
         nodes = textNodes.slice(0, textNodes.index(node));
         offset = 0;
-        for (_k = 0, _len3 = nodes.length; _k < _len3; _k++) {
+        for (_k = 0, _len2 = nodes.length; _k < _len2; _k++) {
           n = nodes[_k];
           offset += n.nodeValue.length;
         }
@@ -1692,12 +2071,14 @@
 
     NormalizedRange.prototype.text = function() {
       var node;
+
       return ((function() {
-        var _k, _len3, _ref2, _results;
-        _ref2 = this.textNodes();
+        var _k, _len2, _ref3, _results;
+
+        _ref3 = this.textNodes();
         _results = [];
-        for (_k = 0, _len3 = _ref2.length; _k < _len3; _k++) {
-          node = _ref2[_k];
+        for (_k = 0, _len2 = _ref3.length; _k < _len2; _k++) {
+          node = _ref3[_k];
           _results.push(node.nodeValue);
         }
         return _results;
@@ -1705,14 +2086,16 @@
     };
 
     NormalizedRange.prototype.textNodes = function() {
-      var end, start, textNodes, _ref2;
+      var end, start, textNodes, _ref3;
+
       textNodes = $(this.commonAncestor).textNodes();
-      _ref2 = [textNodes.index(this.start), textNodes.index(this.end)], start = _ref2[0], end = _ref2[1];
-      return $.makeArray(textNodes.slice(start, end + 1 || 9e9));
+      _ref3 = [textNodes.index(this.start), textNodes.index(this.end)], start = _ref3[0], end = _ref3[1];
+      return $.makeArray(textNodes.slice(start, +end + 1 || 9e9));
     };
 
     NormalizedRange.prototype.toRange = function() {
       var range;
+
       range = document.createRange();
       range.setStartBefore(this.start);
       range.setEndAfter(this.end);
@@ -1724,7 +2107,6 @@
   })();
 
   Range.SerializedRange = (function() {
-
     function SerializedRange(obj) {
       this.startContainer = obj.startContainer;
       this.startOffset = obj.startOffset;
@@ -1733,15 +2115,17 @@
     }
 
     SerializedRange.prototype.normalize = function(root) {
-      var contains, length, node, p, range, targetOffset, tn, xpath, _k, _l, _len3, _len4, _ref2, _ref3;
+      var contains, e, length, node, p, range, targetOffset, tn, xpath, _k, _l, _len2, _len3, _ref3, _ref4;
+
       range = {};
-      _ref2 = ['start', 'end'];
-      for (_k = 0, _len3 = _ref2.length; _k < _len3; _k++) {
-        p = _ref2[_k];
+      _ref3 = ['start', 'end'];
+      for (_k = 0, _len2 = _ref3.length; _k < _len2; _k++) {
+        p = _ref3[_k];
         xpath = this[p + 'Container'];
         try {
           node = Range.nodeFromXPath(xpath, root);
-        } catch (e) {
+        } catch (_error) {
+          e = _error;
           throw new Range.RangeError(p, ("Error while finding " + p + " node: " + xpath + ": ") + e, e);
         }
         if (!node) {
@@ -1749,9 +2133,9 @@
         }
         length = 0;
         targetOffset = this[p + 'Offset'] + (p === "start" ? 1 : 0);
-        _ref3 = $(node).textNodes();
-        for (_l = 0, _len4 = _ref3.length; _l < _len4; _l++) {
-          tn = _ref3[_l];
+        _ref4 = $(node).textNodes();
+        for (_l = 0, _len3 = _ref4.length; _l < _len3; _l++) {
+          tn = _ref4[_l];
           if (length + tn.nodeValue.length >= targetOffset) {
             range[p + 'Container'] = tn;
             range[p + 'Offset'] = this[p + 'Offset'] - length;
@@ -1760,11 +2144,11 @@
             length += tn.nodeValue.length;
           }
         }
-        if (!(range[p + 'Offset'] != null)) {
+        if (range[p + 'Offset'] == null) {
           throw new Range.RangeError("" + p + "offset", "Couldn't find offset " + this[p + 'Offset'] + " in element " + this[p]);
         }
       }
-      contains = !(document.compareDocumentPosition != null) ? function(a, b) {
+      contains = document.compareDocumentPosition == null ? function(a, b) {
         return a.contains(b);
       } : function(a, b) {
         return a.compareDocumentPosition(b) & 16;
@@ -1796,10 +2180,12 @@
   })();
 
   _Task = (function() {
-
     _Task.prototype.uniqueId = function(length) {
       var id;
-      if (length == null) length = 8;
+
+      if (length == null) {
+        length = 8;
+      }
       id = "";
       while (id.length < length) {
         id += Math.random().toString(36).substr(2);
@@ -1808,8 +2194,11 @@
     };
 
     function _Task(info) {
+      this._skip = __bind(this._skip, this);
       this._start = __bind(this._start, this);
-      var _this = this;
+      var _ref3,
+        _this = this;
+
       if (info.manager == null) {
         throw new Error("Trying to create task with no manager!");
       }
@@ -1820,11 +2209,14 @@
         throw new Error("Trying to define task with no code!");
       }
       this.manager = info.manager;
+      this.log = this.manager.log;
       this.taskID = this.uniqueId();
       this._name = info.name;
       this._todo = info.code;
       this._data = info.data;
-      if (info.deps == null) info.deps = [];
+      if ((_ref3 = info.deps) == null) {
+        info.deps = [];
+      }
       this.setDeps(info.deps);
       this.started = false;
       this.dfd = new jQuery.Deferred();
@@ -1835,29 +2227,58 @@
           taskName: _this._name
         }));
       };
+      this.dfd._resolve = this.dfd.resolve;
+      this.dfd.resolve = function() {
+        throw new Error("Use ready() instead of resolve()!");
+      };
+      this.dfd._reject = this.dfd.reject;
+      this.dfd.reject = function() {
+        throw new Error("Use failed() instead of reject()!");
+      };
       this.dfd.ready = function(data) {
         var elapsedTime, endTime;
+
+        if (_this.dfd.state() !== "pending") {
+          throw new Error("Called ready() on a task in state '" + _this.dfd.state() + "'!");
+        }
         endTime = new Date().getTime();
         elapsedTime = endTime - _this.dfd.startTime;
         _this.dfd.notify({
           progress: 1,
           text: "Finished in " + elapsedTime + "ms."
         });
-        return _this.dfd.resolve(data);
+        return _this.dfd._resolve(data);
+      };
+      this.dfd.failed = function(data) {
+        var elapsedTime, endTime;
+
+        if (_this.dfd.state() !== "pending") {
+          throw new Error("Called failed() on a task in state '" + _this.dfd.state() + "'!");
+        }
+        endTime = new Date().getTime();
+        elapsedTime = endTime - _this.dfd.startTime;
+        _this.dfd.notify({
+          progress: 1,
+          text: "Failed in " + elapsedTime + "ms."
+        });
+        return _this.dfd._reject(data);
       };
       this.dfd.promise(this);
     }
 
     _Task.prototype.setDeps = function(deps) {
-      if (!Array.isArray(deps)) deps = [deps];
-      return this._deps = deps;
+      this._deps = [];
+      return this.addDeps(deps);
     };
 
     _Task.prototype.addDeps = function(toAdd) {
-      var dep, _k, _len3, _results;
-      if (!Array.isArray(toAdd)) toAdd = [toAdd];
+      var dep, _k, _len2, _results;
+
+      if (!Array.isArray(toAdd)) {
+        toAdd = [toAdd];
+      }
       _results = [];
-      for (_k = 0, _len3 = toAdd.length; _k < _len3; _k++) {
+      for (_k = 0, _len2 = toAdd.length; _k < _len2; _k++) {
         dep = toAdd[_k];
         _results.push(this._deps.push(dep));
       }
@@ -1865,22 +2286,26 @@
     };
 
     _Task.prototype.removeDeps = function(toRemove) {
-      console.log("Should remove:");
-      console.log(toRemove);
-      if (!Array.isArray(toRemove)) toRemove = [toRemove];
-      return this._deps = this._deps.filter(function(dep) {
+      this.log.debug("Should remove:", toRemove);
+      if (!Array.isArray(toRemove)) {
+        toRemove = [toRemove];
+      }
+      this._deps = this._deps.filter(function(dep) {
         return __indexOf.call(toRemove, dep) < 0;
       });
+      return this.log.debug("Deps now:", this._deps);
     };
 
     _Task.prototype.resolveDeps = function() {
       var dep;
+
       return this._depsResolved = (function() {
-        var _k, _len3, _ref2, _results;
-        _ref2 = this._deps;
+        var _k, _len2, _ref3, _results;
+
+        _ref3 = this._deps;
         _results = [];
-        for (_k = 0, _len3 = _ref2.length; _k < _len3; _k++) {
-          dep = _ref2[_k];
+        for (_k = 0, _len2 = _ref3.length; _k < _len2; _k++) {
+          dep = _ref3[_k];
           _results.push(typeof dep === "string" ? this.manager.lookup(dep) : dep);
         }
         return _results;
@@ -1888,20 +2313,25 @@
     };
 
     _Task.prototype._start = function() {
-      var dep, _k, _len3, _ref2,
+      var dep, _k, _len2, _ref3,
         _this = this;
+
       if (this.started) {
-        console.log("This task ('" + this._name + "') has already been started!");
+        this.log.debug("This task ('" + this._name + "') has already been started!");
         return;
       }
-      _ref2 = this._depsResolved;
-      for (_k = 0, _len3 = _ref2.length; _k < _len3; _k++) {
-        dep = _ref2[_k];
+      if (this._depsResolved == null) {
+        throw Error("Dependencies are not resolved for task '" + this._name(+"'!"));
+      }
+      _ref3 = this._depsResolved;
+      for (_k = 0, _len2 = _ref3.length; _k < _len2; _k++) {
+        dep = _ref3[_k];
         if (!dep.isResolved()) {
-          console.log("What am I doing here? Out of the " + this._depsResolved.length + " dependencies, '" + dep._name + "' for the current task '" + this._name + "' has not yet been resolved!");
+          this.log.debug("What am I doing here? Out of the " + this._depsResolved.length + " dependencies, '" + dep._name + "' for the current task '" + this._name + "' has not yet been resolved!");
           return;
         }
       }
+      this.started = true;
       return setTimeout(function() {
         _this.dfd.notify({
           progress: 0,
@@ -1912,12 +2342,23 @@
       });
     };
 
+    _Task.prototype._skip = function() {
+      if (this.started) {
+        return;
+      }
+      this.started = true;
+      this.dfd.notify({
+        progress: 1,
+        text: "Skipping, because some dependencies have failed."
+      });
+      return this.dfd._reject();
+    };
+
     return _Task;
 
   })();
 
   _TaskGen = (function() {
-
     function _TaskGen(info) {
       this.manager = info.manager;
       this.name = info.name;
@@ -1926,9 +2367,8 @@
     }
 
     _TaskGen.prototype.create = function(info) {
-      var name;
       this.count += 1;
-      return name = this.manager.create({
+      return this.manager.create({
         name: this.name + " #" + this.count + ": " + info.instanceName,
         code: this.todo,
         deps: info.deps,
@@ -1941,20 +2381,21 @@
   })();
 
   _CompositeTask = (function(_super) {
-
     __extends(_CompositeTask, _super);
 
     function _CompositeTask(info) {
       var _this = this;
+
       if (info.code != null) {
         throw new Error("You can not specify code for a CompositeTask!");
       }
       info.code = function() {
-        return _this.trigger.dfd.resolve();
+        return _this.trigger.dfd._resolve();
       };
       _CompositeTask.__super__.constructor.call(this, info);
       this.subTasks = {};
       this.pendingSubTasks = 0;
+      this.failedSubTasks = 0;
       this.trigger = this.createSubTask({
         weight: 0,
         name: info.name + "__init",
@@ -1962,14 +2403,29 @@
       });
     }
 
+    _CompositeTask.prototype._finished = function() {
+      if (this.failedSubTasks) {
+        return this.dfd.failed();
+      } else {
+        return this.dfd.ready();
+      }
+    };
+
     _CompositeTask.prototype.addSubTask = function(info) {
       var task, weight,
         _this = this;
+
       weight = info.weight;
-      if (weight == null) throw new Error("Trying to add subTask with no weight!");
+      if (weight == null) {
+        throw new Error("Trying to add subTask with no weight!");
+      }
       task = info.task;
-      if (task == null) throw new Error("Trying to add subTask with no task!");
-      if (this.trigger != null) task.addDeps(this.trigger);
+      if (task == null) {
+        throw new Error("Trying to add subTask with no task!");
+      }
+      if (this.trigger != null) {
+        task.addDeps(this.trigger);
+      }
       this.subTasks[task.taskID] = {
         weight: weight,
         progress: 0,
@@ -1978,34 +2434,51 @@
       this.pendingSubTasks += 1;
       task.done(function() {
         _this.pendingSubTasks -= 1;
-        if (!_this.pendingSubTasks) return _this.dfd.ready();
+        if (!_this.pendingSubTasks) {
+          return _this._finished();
+        }
+      });
+      task.fail(function() {
+        _this.failedSubTasks += 1;
+        _this.pendingSubTasks -= 1;
+        if (!_this.pendingSubTasks) {
+          return _this._finished();
+        }
       });
       return task.progress(function(info) {
-        var countId, countInfo, progress, report, taskInfo, _ref2;
+        var countId, countInfo, progress, report, taskInfo, totalWeight, _ref3;
+
         task = info.task;
         delete info.task;
-        if (task === _this.trigger) return;
+        if (task === _this.trigger) {
+          return;
+        }
         taskInfo = _this.subTasks[task.taskID];
         $.extend(taskInfo, info);
         progress = 0;
-        _ref2 = _this.subTasks;
-        for (countId in _ref2) {
-          countInfo = _ref2[countId];
+        totalWeight = 0;
+        _ref3 = _this.subTasks;
+        for (countId in _ref3) {
+          countInfo = _ref3[countId];
           progress += countInfo.progress * countInfo.weight;
+          totalWeight += countInfo.weight;
         }
         report = {
-          progress: progress
+          progress: progress / totalWeight
         };
-        if (info.text != null) report.text = task._name + ": " + info.text;
+        if (info.text != null) {
+          report.text = task._name + ": " + info.text;
+        }
         return _this.dfd.notify(report);
       });
     };
 
     _CompositeTask.prototype.createSubTask = function(info) {
       var task, w;
+
       w = info.weight;
       delete info.weight;
-      task = this.manager.create(info);
+      task = this.manager.create(info, false);
       this.addSubTask({
         weight: w,
         task: task
@@ -2018,32 +2491,52 @@
   })(_Task);
 
   TaskManager = (function() {
-
     function TaskManager(name) {
+      var _ref3;
+
       this.name = name;
+      if ((_ref3 = this.log) == null) {
+        this.log = getXLogger(name + " TaskMan");
+      }
+      this.defaultProgressCallbacks = [];
     }
+
+    TaskManager.prototype.addDefaultProgress = function(callback) {
+      return this.defaultProgressCallbacks.push(callback);
+    };
 
     TaskManager.prototype.tasks = {};
 
     TaskManager.prototype._checkName = function(info) {
       var name;
+
       name = info != null ? info.name : void 0;
       if (name == null) {
-        console.log(info);
         throw new Error("Trying to create a task without a name!");
       }
       if (this.tasks[name] != null) {
-        console.log("Warning: overriding existing task '" + name + "' with new definition!");
+        this.log.info("Overriding existing task '" + name + "' with new definition!");
       }
       return name;
     };
 
-    TaskManager.prototype.create = function(info) {
-      var name, task;
+    TaskManager.prototype.create = function(info, useDefaultProgress) {
+      var cb, name, task, _k, _len2, _ref3;
+
+      if (useDefaultProgress == null) {
+        useDefaultProgress = true;
+      }
       name = this._checkName(info);
       info.manager = this;
       task = new _Task(info);
-      this.tasks[name] = task;
+      this.tasks[task._name] = task;
+      if (useDefaultProgress) {
+        _ref3 = this.defaultProgressCallbacks;
+        for (_k = 0, _len2 = _ref3.length; _k < _len2; _k++) {
+          cb = _ref3[_k];
+          task.progress(cb);
+        }
+      }
       return task;
     };
 
@@ -2060,11 +2553,17 @@
     };
 
     TaskManager.prototype.createComposite = function(info) {
-      var name, task;
+      var cb, name, task, _k, _len2, _ref3;
+
       name = this._checkName(info);
       info.manager = this;
       task = new _CompositeTask(info);
       this.tasks[name] = task;
+      _ref3 = this.defaultProgressCallbacks;
+      for (_k = 0, _len2 = _ref3.length; _k < _len2; _k++) {
+        cb = _ref3[_k];
+        task.progress(cb);
+      }
       return task;
     };
 
@@ -2081,38 +2580,43 @@
     };
 
     TaskManager.prototype.removeAllDepsTo = function(to) {
-      return console.log("a");
+      throw new Error("Not yet implemented.");
     };
 
     TaskManager.prototype.lookup = function(name) {
       var result;
+
       result = this.tasks[name];
       if (result == null) {
-        throw new Error("Looking up non-existant task '" + name + "'." + " Known tasks are: " + this.tasks.keys);
+        this.log.debug("Missing dependency: '" + name + "'.");
+        throw new Error("Looking up non-existant task '" + name + "'.");
       }
       return result;
     };
 
     TaskManager.prototype.schedule = function() {
-      var deps, dt, name, task, _ref2;
-      _ref2 = this.tasks;
-      for (name in _ref2) {
-        task = _ref2[name];
-        try {
-          deps = task.resolveDeps();
-          dt = task;
-          if (deps.length === 0) {
-            task._start();
-          } else if (deps.length === 1) {
-            deps[0].done(task._start);
-          } else {
-            $.when.apply(null, deps).done(task._start);
+      var deps, exception, name, p, task, _ref3;
+
+      _ref3 = this.tasks;
+      for (name in _ref3) {
+        task = _ref3[name];
+        if (!task.started) {
+          try {
+            deps = task.resolveDeps();
+            if (deps.length === 0 && !task.started) {
+              task._start();
+            } else if (deps.length === 1) {
+              deps[0].done(task._start);
+              deps[0].fail(task._skip);
+            } else {
+              p = $.when.apply(null, deps);
+              p.done(task._start);
+              p.fail(task._skip);
+            }
+          } catch (_error) {
+            exception = _error;
+            this.log.debug("Could not resolve dependencies for task '" + name + "', so not scheduling it.");
           }
-        } catch (exception) {
-          console.log("E:");
-          console.log(exception);
-          console.log(exception.stack);
-          console.log("Could not resolve dependencies for task '" + name + "', so not scheduling it.");
         }
       }
       return null;
@@ -2125,6 +2629,7 @@
   util = {
     uuid: (function() {
       var counter;
+
       counter = 0;
       return function() {
         return counter++;
@@ -2137,10 +2642,12 @@
     },
     maxZIndex: function($elements) {
       var all, el;
+
       all = (function() {
-        var _k, _len3, _results;
+        var _k, _len2, _results;
+
         _results = [];
-        for (_k = 0, _len3 = $elements.length; _k < _len3; _k++) {
+        for (_k = 0, _len2 = $elements.length; _k < _len2; _k++) {
           el = $elements[_k];
           if ($(el).css('position') === 'static') {
             _results.push(-1);
@@ -2154,6 +2661,7 @@
     },
     mousePosition: function(e, offsetEl) {
       var offset;
+
       offset = $(offsetEl).offset();
       return {
         top: e.pageY - offset.top,
@@ -2168,7 +2676,6 @@
   _Annotator = this.Annotator;
 
   Annotator = (function(_super) {
-
     __extends(Annotator, _super);
 
     Annotator.prototype.events = {
@@ -2215,10 +2722,30 @@
       this.onEditorSubmit = __bind(this.onEditorSubmit, this);
       this.onEditorHide = __bind(this.onEditorHide, this);
       this.showEditor = __bind(this.showEditor, this);
-      this.getHref = __bind(this.getHref, this);      Annotator.__super__.constructor.apply(this, arguments);
+      this.getHref = __bind(this.getHref, this);
+      this.defaultNotify = __bind(this.defaultNotify, this);
+      var _ref3, _ref4, _ref5,
+        _this = this;
+
+      Annotator.__super__.constructor.apply(this, arguments);
+      if ((_ref3 = this.log) == null) {
+        this.log = getXLogger((_ref4 = options != null ? options.annotatorName : void 0) != null ? _ref4 : "Annotator");
+      }
+      this.log.info("Annotator constructor running.");
+      if ((_ref5 = this.tasklog) == null) {
+        this.tasklog = getXLogger(this.log.name + " tasks");
+      }
+      this.alog = getXLogger(this.log.name + " anchoring");
       this.plugins = {};
-      if (!Annotator.supported()) return this;
+      if (!Annotator.supported()) {
+        return this;
+      }
+      this.domMapper = new DomTextMapper();
+      this.domMatcher = new DomTextMatcher(this.domMapper);
       this.tasks = new TaskManager("Annotator");
+      this.tasks.addDefaultProgress(function(info) {
+        return _this.defaultNotify(info);
+      });
       if (!this.options.noInit) {
         if (this.options.asyncInit) {
           this.initAsync();
@@ -2230,15 +2757,19 @@
     }
 
     Annotator.prototype.initSync = function() {
+      this.log.debug("Doing sync init.");
       this._init = new jQuery.Deferred();
       this.init = this._init.promise();
-      this._setupDTM();
       this._setupDynamicStyle();
       this._setupViewer()._setupEditor();
       this._setupWrapper();
       this.adder = $(this.html.adder).appendTo(this.wrapper).hide();
-      if (!this.options.noScan) this._scanSync();
-      if (!this.options.readOnly) this._setupDocumentEvents();
+      if (!this.options.noScan) {
+        this._scanSync();
+      }
+      if (!this.options.readOnly) {
+        this._setupDocumentEvents();
+      }
       this._init.resolve();
       return null;
     };
@@ -2246,46 +2777,38 @@
     Annotator.prototype.defineAsyncInitTasks = function() {
       var scan,
         _this = this;
+
       this.init = this.tasks.createComposite({
         name: "Booting Annotator"
       });
       this.init.createSubTask({
-        weight: 0.031,
-        name: "setup d-t-m",
-        code: function(task) {
-          _this._setupDTM();
-          return task.ready();
-        }
-      });
-      this.init.createSubTask({
-        weight: 0.093,
-        name: "setup dynamic CSS styles",
+        weight: 1,
+        name: "dynamic CSS styles",
         code: function(task) {
           _this._setupDynamicStyle();
           return task.ready();
         }
       });
       this.init.createSubTask({
-        weight: 0.062,
-        name: "setup wrapper",
-        deps: ["setup d-t-m"],
+        weight: 1,
+        name: "wrapper",
         code: function(task) {
           _this._setupWrapper();
           return task.ready();
         }
       });
       this.init.createSubTask({
-        weight: 0.072,
-        name: "create adder",
-        deps: ["setup wrapper"],
+        weight: 1,
+        name: "adder",
+        deps: ["wrapper"],
         code: function(task) {
           _this.adder = $(_this.html.adder).appendTo(_this.wrapper).hide();
           return task.ready();
         }
       });
       this.init.createSubTask({
-        weight: 0.113,
-        name: "setup viewer & editor",
+        weight: 1,
+        name: "viewer & editor",
         code: function(task) {
           _this._setupViewer()._setupEditor();
           return task.ready();
@@ -2295,6 +2818,7 @@
         name: "scan document",
         code: function(task) {
           var s;
+
           s = _this._scanAsync();
           s.progress(task.notify);
           return s.done(task.ready);
@@ -2307,37 +2831,44 @@
       } else {
         scan = this._scanGen.create({
           instanceName: "Initial scan",
-          deps: ["setup d-t-m", "setup wrapper"]
+          deps: ["wrapper"]
         });
       }
       this.init.addSubTask({
-        weight: 0.619,
+        weight: 20,
         task: scan
       });
       return this.init.createSubTask({
-        weight: 0.01,
-        name: "setup document events",
-        deps: ["setup d-t-m", "setup wrapper", "setup viewer & editor", scan, "setup dynamic CSS styles", "create adder"],
+        weight: 0,
+        name: "document events",
+        deps: ["wrapper", "viewer & editor", scan, "dynamic CSS styles", "adder"],
         code: function(task) {
-          if (!_this.options.readOnly) _this._setupDocumentEvents();
+          if (!_this.options.readOnly) {
+            _this._setupDocumentEvents();
+          }
           return task.ready();
         }
       });
     };
 
-    Annotator.prototype.initAsync = function() {
-      var _this = this;
-      this.defineAsyncInitTasks();
-      this.init.progress(function(info) {
-        return console.log(info.taskName + ": " + info.progress + " - " + info.text);
-      });
-      return this.tasks.schedule();
+    Annotator.prototype.defaultNotify = function(info) {
+      var num, progressText, _ref3;
+
+      if (info == null) {
+        info = {};
+      }
+      if ((_ref3 = info.progress) == null) {
+        info.progress = 0;
+      }
+      num = Math.round(100 * info.progress);
+      progressText = num.toString() + "%";
+      return this.tasklog.debug(info.taskName + ": " + progressText + " - " + info.text);
     };
 
-    Annotator.prototype._setupDTM = function() {
-      this.domMapper = new DomTextMapper();
-      this.domMatcher = new DomTextMatcher(this.domMapper);
-      return this;
+    Annotator.prototype.initAsync = function() {
+      this.defineAsyncInitTasks();
+      this.asyncMode = true;
+      return this.tasks.schedule();
     };
 
     Annotator.prototype._scanSync = function() {
@@ -2349,17 +2880,21 @@
     };
 
     Annotator.prototype._setupWrapper = function() {
-      var _ref2;
+      var _ref3;
+
       this.wrapper = $(this.html.wrapper);
       this.element.find('script').remove();
       this.element.wrapInner(this.wrapper);
       this.wrapper = this.element.find('.annotator-wrapper');
-      if ((_ref2 = this.domMapper) != null) _ref2.setRootNode(this.wrapper[0]);
+      if ((_ref3 = this.domMapper) != null) {
+        _ref3.setRootNode(this.wrapper[0]);
+      }
       return this;
     };
 
     Annotator.prototype._setupViewer = function() {
       var _this = this;
+
       this.viewer = new Annotator.Viewer({
         readOnly: this.options.readOnly
       });
@@ -2405,16 +2940,18 @@
 
     Annotator.prototype._setupDynamicStyle = function() {
       var max, sel, style, x;
+
       style = $('#annotator-dynamic-style');
       if (!style.length) {
         style = $('<style id="annotator-dynamic-style"></style>').appendTo(document.head);
       }
       sel = '*' + ((function() {
-        var _k, _len3, _ref2, _results;
-        _ref2 = ['adder', 'outer', 'notice', 'filter'];
+        var _k, _len2, _ref3, _results;
+
+        _ref3 = ['adder', 'outer', 'notice', 'filter'];
         _results = [];
-        for (_k = 0, _len3 = _ref2.length; _k < _len3; _k++) {
-          x = _ref2[_k];
+        for (_k = 0, _len2 = _ref3.length; _k < _len2; _k++) {
+          x = _ref3[_k];
           _results.push(":not(.annotator-" + x + ")");
         }
         return _results;
@@ -2427,8 +2964,11 @@
 
     Annotator.prototype.getHref = function() {
       var uri;
+
       uri = decodeURIComponent(document.location.href);
-      if (document.location.hash) uri = uri.slice(0, -1 * location.hash.length);
+      if (document.location.hash) {
+        uri = uri.slice(0, -1 * location.hash.length);
+      }
       $('meta[property^="og:url"]').each(function() {
         return uri = decodeURIComponent(this.content);
       });
@@ -2440,6 +2980,7 @@
 
     Annotator.prototype.getRangeSelector = function(range) {
       var selector, sr;
+
       sr = range.serialize(this.wrapper[0]);
       return selector = {
         type: "RangeSelector",
@@ -2451,7 +2992,8 @@
     };
 
     Annotator.prototype.getTextQuoteSelector = function(range) {
-      var endOffset, prefix, quote, rangeEnd, rangeStart, selector, startOffset, suffix, _ref2;
+      var endOffset, prefix, quote, rangeEnd, rangeStart, selector, startOffset, suffix, _ref3;
+
       if (range == null) {
         throw new Error("Called getTextQuoteSelector(range) with null range!");
       }
@@ -2466,7 +3008,7 @@
       }
       endOffset = (this.domMapper.getInfoForNode(rangeEnd)).end;
       quote = this.domMapper.getContentForCharRange(startOffset, endOffset);
-      _ref2 = this.domMapper.getContextForCharRange(startOffset, endOffset), prefix = _ref2[0], suffix = _ref2[1];
+      _ref3 = this.domMapper.getContextForCharRange(startOffset, endOffset), prefix = _ref3[0], suffix = _ref3[1];
       return selector = {
         type: "TextQuoteSelector",
         exact: quote,
@@ -2477,6 +3019,7 @@
 
     Annotator.prototype.getTextPositionSelector = function(range) {
       var endOffset, selector, startOffset;
+
       startOffset = (this.domMapper.getInfoForNode(range.start)).start;
       endOffset = (this.domMapper.getInfoForNode(range.end)).end;
       return selector = {
@@ -2488,6 +3031,7 @@
 
     Annotator.prototype.getQuoteForTarget = function(target) {
       var selector;
+
       selector = this.findSelector(target.selector, "TextQuoteSelector");
       if (selector != null) {
         return this.normalizeString(selector.exact);
@@ -2497,8 +3041,9 @@
     };
 
     Annotator.prototype.getSelectedTargets = function() {
-      var browserRange, i, normedRange, r, rangesToIgnore, realRange, selection, source, targets, _k, _len3,
+      var browserRange, i, normedRange, r, rangesToIgnore, realRange, selection, source, targets, _k, _len2,
         _this = this;
+
       if (!this.wrapper) {
         throw new Error("Can not execute getSelectedTargets() before @wrapper is configured!");
       }
@@ -2508,13 +3053,16 @@
       rangesToIgnore = [];
       if (!selection.isCollapsed) {
         targets = (function() {
-          var _ref2, _results;
+          var _k, _ref3, _results;
+
           _results = [];
-          for (i = 0, _ref2 = selection.rangeCount; 0 <= _ref2 ? i < _ref2 : i > _ref2; 0 <= _ref2 ? i++ : i--) {
+          for (i = _k = 0, _ref3 = selection.rangeCount; 0 <= _ref3 ? _k < _ref3 : _k > _ref3; i = 0 <= _ref3 ? ++_k : --_k) {
             realRange = selection.getRangeAt(i);
             browserRange = new Range.BrowserRange(realRange);
             normedRange = browserRange.normalize().limit(this.wrapper[0]);
-            if (normedRange === null) rangesToIgnore.push(r);
+            if (normedRange === null) {
+              rangesToIgnore.push(r);
+            }
             _results.push({
               selector: [this.getRangeSelector(normedRange), this.getTextQuoteSelector(normedRange), this.getTextPositionSelector(normedRange)],
               source: source
@@ -2524,12 +3072,13 @@
         }).call(this);
         selection.removeAllRanges();
       }
-      for (_k = 0, _len3 = rangesToIgnore.length; _k < _len3; _k++) {
+      for (_k = 0, _len2 = rangesToIgnore.length; _k < _len2; _k++) {
         r = rangesToIgnore[_k];
         selection.addRange(r);
       }
       return $.grep(targets, function(target) {
         var range, selector;
+
         selector = _this.findSelector(target.selector, "RangeSelector");
         if (selector != null) {
           range = (Range.sniff(selector)).normalize(_this.wrapper[0]);
@@ -2543,6 +3092,7 @@
 
     Annotator.prototype.createAnnotation = function() {
       var annotation;
+
       annotation = {};
       this.publish('beforeAnnotationCreated', [annotation]);
       return annotation;
@@ -2553,18 +3103,24 @@
     };
 
     Annotator.prototype.findSelector = function(selectors, type) {
-      var selector, _k, _len3;
-      for (_k = 0, _len3 = selectors.length; _k < _len3; _k++) {
+      var selector, _k, _len2;
+
+      for (_k = 0, _len2 = selectors.length; _k < _len2; _k++) {
         selector = selectors[_k];
-        if (selector.type === type) return selector;
+        if (selector.type === type) {
+          return selector;
+        }
       }
       return null;
     };
 
     Annotator.prototype.findAnchorFromRangeSelector = function(target) {
-      var content, currentQuote, endInfo, endOffset, normalizedRange, savedQuote, selector, startInfo, startOffset;
+      var content, currentQuote, endInfo, endOffset, exception, normalizedRange, savedQuote, selector, startInfo, startOffset;
+
       selector = this.findSelector(target.selector, "RangeSelector");
-      if (selector == null) return null;
+      if (selector == null) {
+        return null;
+      }
       try {
         normalizedRange = Range.sniff(selector).normalize(this.wrapper[0]);
         savedQuote = this.getQuoteForTarget(target);
@@ -2576,21 +3132,22 @@
           content = this.domMapper.getContentForCharRange(startOffset, endOffset);
           currentQuote = this.normalizeString(content);
           if (currentQuote !== savedQuote) {
-            console.log("Could not apply XPath selector to current document             because the quote has changed. (Saved quote is '" + savedQuote + "'.             Current quote is '" + currentQuote + "'.)");
+            this.alog.debug("Could not apply XPath selector to current document             because the quote has changed. (Saved quote is '" + savedQuote + "'.             Current quote is '" + currentQuote + "'.)");
             return null;
           } else {
-            console.log("Saved quote matches.");
+            this.alog.debug("Saved quote matches.");
           }
         } else {
-          console.log("No saved quote, nothing to compare. Assume that it's OK.");
+          this.alog.debug("No saved quote, nothing to compare. Assume that it's OK.");
         }
         return {
           range: normalizedRange,
           quote: savedQuote
         };
-      } catch (exception) {
+      } catch (_error) {
+        exception = _error;
         if (exception instanceof Range.RangeError) {
-          console.log("Could not apply XPath selector to current document. \          The document structure may have changed.");
+          this.alog.debug("Could not apply XPath selector to current document. \          The document structure may have changed.");
           return null;
         } else {
           throw exception;
@@ -2600,20 +3157,23 @@
 
     Annotator.prototype.findAnchorFromPositionSelector = function(target) {
       var browserRange, content, currentQuote, mappings, normalizedRange, savedQuote, selector;
+
       selector = this.findSelector(target.selector, "TextPositionSelector");
-      if (selector == null) return null;
+      if (selector == null) {
+        return null;
+      }
       savedQuote = this.getQuoteForTarget(target);
       if (savedQuote != null) {
         content = this.domMapper.getContentForCharRange(selector.start, selector.end);
         currentQuote = this.normalizeString(content);
         if (currentQuote !== savedQuote) {
-          console.log("Could not apply position selector to current document           because the quote has changed. (Saved quote is '" + savedQuote + "'.           Current quote is '" + currentQuote + "'.)");
+          this.alog.debug("Could not apply position selector to current document           because the quote has changed. (Saved quote is '" + savedQuote + "'.           Current quote is '" + currentQuote + "'.)");
           return null;
         } else {
-          console.log("Saved quote matches.");
+          this.alog.debug("Saved quote matches.");
         }
       } else {
-        console.log("No saved quote, nothing to compare. Assume that it's okay.");
+        this.alog.debug("No saved quote, nothing to compare. Assume that it's okay.");
       }
       mappings = this.domMapper.getMappingsForCharRange(selector.start, selector.end);
       browserRange = new Range.BrowserRange(mappings.realRange);
@@ -2626,11 +3186,14 @@
 
     Annotator.prototype.findAnchorWithTwoPhaseFuzzyMatching = function(target) {
       var anchor, browserRange, expectedEnd, expectedStart, match, normalizedRange, options, posSelector, prefix, quote, quoteSelector, result, suffix;
+
       quoteSelector = this.findSelector(target.selector, "TextQuoteSelector");
       prefix = quoteSelector != null ? quoteSelector.prefix : void 0;
       suffix = quoteSelector != null ? quoteSelector.suffix : void 0;
       quote = quoteSelector != null ? quoteSelector.exact : void 0;
-      if (!((prefix != null) && (suffix != null))) return null;
+      if (!((prefix != null) && (suffix != null))) {
+        return null;
+      }
       posSelector = this.findSelector(target.selector, "TextPositionSelector");
       expectedStart = posSelector != null ? posSelector.start : void 0;
       expectedEnd = posSelector != null ? posSelector.end : void 0;
@@ -2641,12 +3204,11 @@
       };
       result = this.domMatcher.searchFuzzyWithContext(prefix, suffix, quote, expectedStart, expectedEnd, false, null, options);
       if (!result.matches.length) {
-        console.log("Fuzzy matching did not return any results. Giving up on two-phase strategy.");
+        this.alog.debug("Fuzzy matching did not return any results. Giving up on two-phase strategy.");
         return null;
       }
       match = result.matches[0];
-      console.log("Fuzzy found match:");
-      console.log(match);
+      this.alog.debug("Fuzzy found match:", match);
       browserRange = new Range.BrowserRange(match.realRange);
       normalizedRange = browserRange.normalize(this.wrapper[0]);
       anchor = {
@@ -2659,25 +3221,29 @@
 
     Annotator.prototype.findAnchorWithFuzzyMatching = function(target) {
       var anchor, browserRange, expectedStart, len, match, normalizedRange, options, posSelector, quote, quoteSelector, result;
+
       quoteSelector = this.findSelector(target.selector, "TextQuoteSelector");
       quote = quoteSelector != null ? quoteSelector.exact : void 0;
-      if (quote == null) return null;
+      if (quote == null) {
+        return null;
+      }
       posSelector = this.findSelector(target.selector, "TextPositionSelector");
       expectedStart = posSelector != null ? posSelector.start : void 0;
       len = this.domMapper.getDocLength();
-      if (expectedStart == null) expectedStart = len / 2;
+      if (expectedStart == null) {
+        expectedStart = len / 2;
+      }
       options = {
         matchDistance: len * 2,
         withFuzzyComparison: true
       };
       result = this.domMatcher.searchFuzzy(quote, expectedStart, false, null, options);
       if (!result.matches.length) {
-        console.log("Fuzzy matching did not return any results. Giving up on one-phase strategy.");
+        this.alog.debug("Fuzzy matching did not return any results. Giving up on one-phase strategy.");
         return null;
       }
       match = result.matches[0];
-      console.log("Fuzzy found match:");
-      console.log(match);
+      this.alog.debug("Fuzzy found match:", match);
       browserRange = new Range.BrowserRange(match.realRange);
       normalizedRange = browserRange.normalize(this.wrapper[0]);
       anchor = {
@@ -2690,22 +3256,28 @@
 
     Annotator.prototype.findAnchor = function(target) {
       var anchor;
+
       if (target == null) {
         throw new Error("Trying to find anchor for null target!");
       }
-      console.log("Trying to find anchor for target: ");
-      console.log(target);
+      this.alog.debug("Trying to find anchor for target: ");
+      this.alog.debug(target);
       anchor = this.findAnchorFromRangeSelector(target);
-      if (anchor == null) anchor = this.findAnchorFromPositionSelector(target);
+      if (anchor == null) {
+        anchor = this.findAnchorFromPositionSelector(target);
+      }
       if (anchor == null) {
         anchor = this.findAnchorWithTwoPhaseFuzzyMatching(target);
       }
-      if (anchor == null) anchor = this.findAnchorWithFuzzyMatching(target);
+      if (anchor == null) {
+        anchor = this.findAnchorWithFuzzyMatching(target);
+      }
       return anchor;
     };
 
     Annotator.prototype.setupAnnotation = function(annotation) {
-      var anchor, normed, normedRanges, root, t, _k, _l, _len3, _len4, _ref2;
+      var anchor, exception, normed, normedRanges, root, t, _k, _l, _len2, _len3, _ref3;
+
       root = this.wrapper[0];
       annotation.target || (annotation.target = this.selectedTargets);
       if (annotation.target == null) {
@@ -2716,9 +3288,9 @@
       }
       normedRanges = [];
       annotation.quote = [];
-      _ref2 = annotation.target;
-      for (_k = 0, _len3 = _ref2.length; _k < _len3; _k++) {
-        t = _ref2[_k];
+      _ref3 = annotation.target;
+      for (_k = 0, _len2 = _ref3.length; _k < _len2; _k++) {
+        t = _ref3[_k];
         try {
           anchor = this.findAnchor(t);
           t.quote = anchor.quote;
@@ -2727,17 +3299,16 @@
             normedRanges.push(anchor.range);
             annotation.quote.push(t.quote);
           } else {
-            console.log("Could not find anchor target for annotation '" + annotation.id + "'.");
+            this.alog.info("Could not find anchor target for annotation '" + annotation.id + "'.");
           }
-        } catch (exception) {
-          if (exception.stack != null) console.log(exception.stack);
-          console.log(exception.message);
-          console.log(exception);
+        } catch (_error) {
+          exception = _error;
+          this.alog.error("Internal error while anchoring", exception);
         }
       }
       annotation.ranges = [];
       annotation.highlights = [];
-      for (_l = 0, _len4 = normedRanges.length; _l < _len4; _l++) {
+      for (_l = 0, _len3 = normedRanges.length; _l < _len3; _l++) {
         normed = normedRanges[_l];
         annotation.ranges.push(normed.serialize(this.wrapper[0], '.annotator-hl'));
         $.merge(annotation.highlights, this.highlightRange(normed));
@@ -2754,12 +3325,15 @@
     };
 
     Annotator.prototype.deleteAnnotation = function(annotation) {
-      var child, h, _k, _len3, _ref2;
+      var child, h, _k, _len2, _ref3;
+
       if (annotation.highlights != null) {
-        _ref2 = annotation.highlights;
-        for (_k = 0, _len3 = _ref2.length; _k < _len3; _k++) {
-          h = _ref2[_k];
-          if (!(h.parentNode != null)) continue;
+        _ref3 = annotation.highlights;
+        for (_k = 0, _len2 = _ref3.length; _k < _len2; _k++) {
+          h = _ref3[_k];
+          if (!(h.parentNode != null)) {
+            continue;
+          }
           child = h.childNodes[0];
           $(h).replaceWith(h.childNodes);
           window.DomTextMapper.changed(child.parentNode, "removed hilite (annotation deleted)");
@@ -2772,12 +3346,18 @@
     Annotator.prototype.loadAnnotations = function(annotations) {
       var clone, loader,
         _this = this;
-      if (annotations == null) annotations = [];
+
+      if (annotations == null) {
+        annotations = [];
+      }
       loader = function(annList) {
-        var n, now, _k, _len3;
-        if (annList == null) annList = [];
+        var n, now, _k, _len2;
+
+        if (annList == null) {
+          annList = [];
+        }
         now = annList.splice(0, 10);
-        for (_k = 0, _len3 = now.length; _k < _len3; _k++) {
+        for (_k = 0, _len2 = now.length; _k < _len2; _k++) {
           n = now[_k];
           _this.setupAnnotation(n);
         }
@@ -2790,7 +3370,9 @@
         }
       };
       clone = annotations.slice();
-      if (annotations.length) loader(annotations);
+      if (annotations.length) {
+        loader(annotations);
+      }
       return this;
     };
 
@@ -2798,20 +3380,25 @@
       if (this.plugins['Store']) {
         return this.plugins['Store'].dumpAnnotations();
       } else {
-        return console.warn(_t("Can't dump annotations without Store plugin."));
+        return this.log.warn(_t("Can't dump annotations without Store plugin."));
       }
     };
 
     Annotator.prototype.highlightRange = function(normedRange, cssClass) {
-      var hl, node, r, white, _k, _len3, _ref2, _results;
-      if (cssClass == null) cssClass = 'annotator-hl';
+      var hl, node, r, white, _k, _len2, _ref3, _results;
+
+      if (cssClass == null) {
+        cssClass = 'annotator-hl';
+      }
       white = /^\s*$/;
       hl = $("<span class='" + cssClass + "'></span>");
-      _ref2 = normedRange.textNodes();
+      _ref3 = normedRange.textNodes();
       _results = [];
-      for (_k = 0, _len3 = _ref2.length; _k < _len3; _k++) {
-        node = _ref2[_k];
-        if (!(!white.test(node.nodeValue))) continue;
+      for (_k = 0, _len2 = _ref3.length; _k < _len2; _k++) {
+        node = _ref3[_k];
+        if (!(!white.test(node.nodeValue))) {
+          continue;
+        }
         r = $(node).wrapAll(hl).parent().show()[0];
         window.DomTextMapper.changed(node, "created hilite");
         _results.push(r);
@@ -2820,10 +3407,13 @@
     };
 
     Annotator.prototype.highlightRanges = function(normedRanges, cssClass) {
-      var highlights, r, _k, _len3;
-      if (cssClass == null) cssClass = 'annotator-hl';
+      var highlights, r, _k, _len2;
+
+      if (cssClass == null) {
+        cssClass = 'annotator-hl';
+      }
       highlights = [];
-      for (_k = 0, _len3 = normedRanges.length; _k < _len3; _k++) {
+      for (_k = 0, _len2 = normedRanges.length; _k < _len2; _k++) {
         r = normedRanges[_k];
         $.merge(highlights, this.highlightRange(r, cssClass));
       }
@@ -2831,19 +3421,43 @@
     };
 
     Annotator.prototype.addPlugin = function(name, options) {
-      var klass, _base;
+      var klass, plugin, taskInfo, _base, _ref3,
+        _this = this;
+
+      this.tasklog.debug("Loading plugin '" + name + "'...");
       if (this.plugins[name]) {
-        console.error(_t("You cannot have more than one instance of any plugin."));
+        this.log.error(_t("You cannot have more than one instance of any plugin."));
       } else {
         klass = Annotator.Plugin[name];
         if (typeof klass === 'function') {
-          this.plugins[name] = new klass(this.element[0], options);
-          this.plugins[name].annotator = this;
-          if (typeof (_base = this.plugins[name]).pluginInit === "function") {
-            _base.pluginInit();
+          this.plugins[name] = plugin = new klass(this.element[0], options);
+          plugin.annotator = this;
+          if (this.asyncMode) {
+            taskInfo = plugin.initTaskInfo;
+            if ((taskInfo == null) && (plugin.pluginInit != null)) {
+              taskInfo = {
+                name: "plugin " + name,
+                deps: plugin.deps,
+                code: function(task) {
+                  plugin.asyncMode = true;
+                  plugin.pluginInit();
+                  return task.ready();
+                }
+              };
+            }
+            plugin.initTask = this.init.state() === "pending" ? ((_ref3 = taskInfo.weight) != null ? _ref3 : taskInfo.weight = 1, this.init.createSubTask(taskInfo)) : this.tasks.create(taskInfo);
+            if ((options != null ? options.deps : void 0) != null) {
+              plugin.initTask.addDeps(options.deps);
+            }
+            this.tasks.schedule();
+          } else {
+            this.log.debug("Synchronously initing plugin '" + name + "'.");
+            if (typeof (_base = this.plugins[name]).pluginInit === "function") {
+              _base.pluginInit();
+            }
           }
         } else {
-          console.error(_t("Could not load ") + name + _t(" plugin. Have you included the appropriate <script> tag?"));
+          this.log.error(_t("Could not load ") + name + _t(" plugin. Have you included the appropriate <script> tag?"));
         }
       }
       return this;
@@ -2890,27 +3504,32 @@
     };
 
     Annotator.prototype.checkForEndSelection = function(event) {
-      var container, range, selector, target, _k, _len3, _ref2;
+      var container, exception, range, selector, target, _k, _len2, _ref3;
+
       this.mouseIsDown = false;
-      if (this.ignoreMouseup) return;
+      if (this.ignoreMouseup) {
+        return;
+      }
       try {
         this.selectedTargets = this.getSelectedTargets();
-      } catch (exception) {
-        console.log("Error while checking selection:");
-        console.log(exception.stack);
+      } catch (_error) {
+        exception = _error;
+        this.alog.error("While checking selection:", exception);
         alert("There is something very strange about the current selection. Sorry, but I can not annotate this.");
         return;
       }
-      _ref2 = this.selectedTargets;
-      for (_k = 0, _len3 = _ref2.length; _k < _len3; _k++) {
-        target = _ref2[_k];
+      _ref3 = this.selectedTargets;
+      for (_k = 0, _len2 = _ref3.length; _k < _len2; _k++) {
+        target = _ref3[_k];
         selector = this.findSelector(target.selector, "RangeSelector");
         range = (Range.sniff(selector)).normalize(this.wrapper[0]);
         container = range.commonAncestor;
         if ($(container).hasClass('annotator-hl')) {
           container = $(container).parents('[class^=annotator-hl]')[0];
         }
-        if (this.isAnnotator(container)) return;
+        if (this.isAnnotator(container)) {
+          return;
+        }
       }
       if (event && this.selectedTargets.length) {
         return this.adder.css(util.mousePosition(event, this.wrapper[0])).show();
@@ -2925,8 +3544,11 @@
 
     Annotator.prototype.onHighlightMouseover = function(event) {
       var annotations;
+
       this.clearViewerHideTimer();
-      if (this.mouseIsDown || this.viewer.isShown()) return false;
+      if (this.mouseIsDown || this.viewer.isShown()) {
+        return false;
+      }
       annotations = $(event.target).parents('.annotator-hl').andSelf().map(function() {
         return $(this).data("annotation");
       });
@@ -2934,14 +3556,19 @@
     };
 
     Annotator.prototype.onAdderMousedown = function(event) {
-      if (event != null) event.preventDefault();
+      if (event != null) {
+        event.preventDefault();
+      }
       return this.ignoreMouseup = true;
     };
 
     Annotator.prototype.onAdderClick = function(event) {
       var annotation, cancel, cleanup, position, save,
         _this = this;
-      if (event != null) event.preventDefault();
+
+      if (event != null) {
+        event.preventDefault();
+      }
       position = this.adder.position();
       this.adder.hide();
       annotation = this.createAnnotation();
@@ -2968,6 +3595,7 @@
     Annotator.prototype.onEditAnnotation = function(annotation) {
       var cleanup, offset, update,
         _this = this;
+
       offset = this.viewer.element.position();
       update = function() {
         cleanup();
@@ -2993,7 +3621,6 @@
   })(Delegator);
 
   Annotator.Plugin = (function(_super) {
-
     __extends(Plugin, _super);
 
     function Plugin(element, options) {
@@ -3008,15 +3635,15 @@
 
   g = util.getGlobal();
 
-  if (!(((_ref2 = g.document) != null ? _ref2.evaluate : void 0) != null)) {
+  if (((_ref3 = g.document) != null ? _ref3.evaluate : void 0) == null) {
     $.getScript('http://assets.annotateit.org/vendor/xpath.min.js');
   }
 
-  if (!(g.getSelection != null)) {
+  if (g.getSelection == null) {
     $.getScript('http://assets.annotateit.org/vendor/ierange.min.js');
   }
 
-  if (!(g.JSON != null)) {
+  if (g.JSON == null) {
     $.getScript('http://assets.annotateit.org/vendor/json2.min.js');
   }
 
@@ -3044,7 +3671,6 @@
   this.Annotator = Annotator;
 
   Annotator.Widget = (function(_super) {
-
     __extends(Widget, _super);
 
     Widget.prototype.classes = {
@@ -3062,6 +3688,7 @@
 
     Widget.prototype.checkOrientation = function() {
       var current, offset, viewport, widget, window;
+
       this.resetOrientation();
       window = $(util.getGlobal());
       widget = this.element.children(":first");
@@ -3074,8 +3701,12 @@
         top: offset.top,
         right: offset.left + widget.width()
       };
-      if ((current.top - viewport.top) < 0) this.invertY();
-      if ((current.right - viewport.right) > 0) this.invertX();
+      if ((current.top - viewport.top) < 0) {
+        this.invertY();
+      }
+      if ((current.right - viewport.right) > 0) {
+        this.invertX();
+      }
       return this;
     };
 
@@ -3107,7 +3738,6 @@
   })(Delegator);
 
   Annotator.Editor = (function(_super) {
-
     __extends(Editor, _super);
 
     Editor.prototype.events = {
@@ -3155,23 +3785,25 @@
     };
 
     Editor.prototype.load = function(annotation) {
-      var field, _k, _len3, _ref3;
+      var field, _k, _len2, _ref4;
+
       this.annotation = annotation;
       this.publish('load', [this.annotation]);
-      _ref3 = this.fields;
-      for (_k = 0, _len3 = _ref3.length; _k < _len3; _k++) {
-        field = _ref3[_k];
+      _ref4 = this.fields;
+      for (_k = 0, _len2 = _ref4.length; _k < _len2; _k++) {
+        field = _ref4[_k];
         field.load(field.element, this.annotation);
       }
       return this.show();
     };
 
     Editor.prototype.submit = function(event) {
-      var field, _k, _len3, _ref3;
+      var field, _k, _len2, _ref4;
+
       util.preventEventDefault(event);
-      _ref3 = this.fields;
-      for (_k = 0, _len3 = _ref3.length; _k < _len3; _k++) {
-        field = _ref3[_k];
+      _ref4 = this.fields;
+      for (_k = 0, _len2 = _ref4.length; _k < _len2; _k++) {
+        field = _ref4[_k];
         field.submit(field.element, this.annotation);
       }
       this.publish('save', [this.annotation]);
@@ -3180,6 +3812,7 @@
 
     Editor.prototype.addField = function(options) {
       var element, field, input;
+
       field = $.extend({
         id: 'annotator-field-' + util.uuid(),
         type: 'input',
@@ -3218,6 +3851,7 @@
 
     Editor.prototype.checkOrientation = function() {
       var controls, list;
+
       Editor.__super__.checkOrientation.apply(this, arguments);
       list = this.element.find('ul');
       controls = this.element.find('.annotator-controls');
@@ -3244,6 +3878,7 @@
     Editor.prototype.setupDraggables = function() {
       var classes, controls, cornerItem, editor, mousedown, onMousedown, onMousemove, onMouseup, resize, textarea, throttle,
         _this = this;
+
       this.element.find('.annotator-resize').remove();
       if (this.element.hasClass(this.classes.invert.y)) {
         cornerItem = this.element.find('.annotator-item:last');
@@ -3281,6 +3916,7 @@
       };
       onMousemove = function(event) {
         var diff, directionX, directionY, height, width;
+
         if (mousedown && throttle === false) {
           diff = {
             top: event.pageY - mousedown.top,
@@ -3293,8 +3929,12 @@
             directionY = editor.hasClass(classes.invert.y) ? 1 : -1;
             textarea.height(height + (diff.top * directionY));
             textarea.width(width + (diff.left * directionX));
-            if (textarea.outerHeight() !== height) mousedown.top = event.pageY;
-            if (textarea.outerWidth() !== width) mousedown.left = event.pageX;
+            if (textarea.outerHeight() !== height) {
+              mousedown.top = event.pageY;
+            }
+            if (textarea.outerWidth() !== width) {
+              mousedown.left = event.pageX;
+            }
           } else if (mousedown.element === controls[0]) {
             editor.css({
               top: parseInt(editor.css('top'), 10) + diff.top,
@@ -3318,7 +3958,6 @@
   })(Annotator.Widget);
 
   Annotator.Viewer = (function(_super) {
-
     __extends(Viewer, _super);
 
     Viewer.prototype.events = {
@@ -3354,6 +3993,7 @@
     Viewer.prototype.show = function(event) {
       var controls,
         _this = this;
+
       util.preventEventDefault(event);
       controls = this.element.find('.annotator-controls').addClass(this.classes.showControls);
       setTimeout((function() {
@@ -3374,12 +4014,13 @@
     };
 
     Viewer.prototype.load = function(annotations) {
-      var annotation, controller, controls, del, edit, element, field, item, link, links, list, _k, _l, _len3, _len4, _ref3, _ref4;
+      var annotation, controller, controls, del, edit, element, field, item, link, links, list, _k, _l, _len2, _len3, _ref4, _ref5;
+
       this.annotations = annotations || [];
       list = this.element.find('ul:first').empty();
-      _ref3 = this.annotations;
-      for (_k = 0, _len3 = _ref3.length; _k < _len3; _k++) {
-        annotation = _ref3[_k];
+      _ref4 = this.annotations;
+      for (_k = 0, _len2 = _ref4.length; _k < _len2; _k++) {
+        annotation = _ref4[_k];
         item = $(this.item).clone().appendTo(list).data('annotation', annotation);
         controls = item.find('.annotator-controls');
         link = controls.find('.annotator-link');
@@ -3388,7 +4029,7 @@
         links = new LinkParser(annotation.links || []).get('alternate', {
           'type': 'text/html'
         });
-        if (links.length === 0 || !(links[0].href != null)) {
+        if (links.length === 0 || (links[0].href == null)) {
           link.remove();
         } else {
           link.attr('href', links[0].href);
@@ -3412,9 +4053,9 @@
             }
           };
         }
-        _ref4 = this.fields;
-        for (_l = 0, _len4 = _ref4.length; _l < _len4; _l++) {
-          field = _ref4[_l];
+        _ref5 = this.fields;
+        for (_l = 0, _len3 = _ref5.length; _l < _len3; _l++) {
+          field = _ref5[_l];
           element = $(field.element).clone().appendTo(item)[0];
           field.load(element, annotation, controller);
         }
@@ -3425,6 +4066,7 @@
 
     Viewer.prototype.addField = function(options) {
       var field;
+
       field = $.extend({
         load: function() {}
       }, options);
@@ -3444,6 +4086,7 @@
 
     Viewer.prototype.onButtonClick = function(event, type) {
       var item;
+
       item = $(event.target).parents('.annotator-annotation');
       return this.publish(type, [item.data('annotation')]);
     };
@@ -3453,19 +4096,22 @@
   })(Annotator.Widget);
 
   LinkParser = (function() {
-
     function LinkParser(data) {
       this.data = data;
     }
 
     LinkParser.prototype.get = function(rel, cond) {
-      var d, k, keys, match, v, _k, _len3, _ref3, _results;
-      if (cond == null) cond = {};
+      var d, k, keys, match, v, _k, _len2, _ref4, _results;
+
+      if (cond == null) {
+        cond = {};
+      }
       cond = $.extend({}, cond, {
         rel: rel
       });
       keys = (function() {
         var _results;
+
         _results = [];
         for (k in cond) {
           if (!__hasProp.call(cond, k)) continue;
@@ -3474,10 +4120,10 @@
         }
         return _results;
       })();
-      _ref3 = this.data;
+      _ref4 = this.data;
       _results = [];
-      for (_k = 0, _len3 = _ref3.length; _k < _len3; _k++) {
-        d = _ref3[_k];
+      for (_k = 0, _len2 = _ref4.length; _k < _len2; _k++) {
+        d = _ref4[_k];
         match = keys.reduce((function(m, k) {
           return m && (d[k] === cond[k]);
         }), true);
@@ -3497,7 +4143,6 @@
   Annotator = Annotator || {};
 
   Annotator.Notification = (function(_super) {
-
     __extends(Notification, _super);
 
     Notification.prototype.events = {
@@ -3520,7 +4165,9 @@
     }
 
     Notification.prototype.show = function(message, status) {
-      if (status == null) status = Annotator.Notification.INFO;
+      if (status == null) {
+        status = Annotator.Notification.INFO;
+      }
       $(this.element).addClass(this.options.classes.show).addClass(this.options.classes[status]).escape(message || "");
       setTimeout(this.hide, 5000);
       return this;
@@ -3543,6 +4190,7 @@
 
   $(function() {
     var notification;
+
     notification = new Annotator.Notification;
     Annotator.showNotification = notification.show;
     return Annotator.hideNotification = notification.hide;

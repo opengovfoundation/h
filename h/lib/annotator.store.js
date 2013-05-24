@@ -1,22 +1,22 @@
 /*
-** Annotator 1.2.6-dev-1545e1b
+** Annotator 1.2.6-dev-ae08566
 ** https://github.com/okfn/annotator/
 **
 ** Copyright 2012 Aron Carroll, Rufus Pollock, and Nick Stenning.
 ** Dual licensed under the MIT and GPLv3 licenses.
 ** https://github.com/okfn/annotator/blob/master/LICENSE
 **
-** Built at: 2013-05-15 16:54:38Z
+** Built at: 2013-05-24 00:51:46Z
 */
+
 
 (function() {
   var __bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; },
-    __hasProp = Object.prototype.hasOwnProperty,
-    __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor; child.__super__ = parent.prototype; return child; },
-    __indexOf = Array.prototype.indexOf || function(item) { for (var i = 0, l = this.length; i < l; i++) { if (i in this && this[i] === item) return i; } return -1; };
+    __hasProp = {}.hasOwnProperty,
+    __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; },
+    __indexOf = [].indexOf || function(item) { for (var i = 0, l = this.length; i < l; i++) { if (i in this && this[i] === item) return i; } return -1; };
 
   Annotator.Plugin.Store = (function(_super) {
-
     __extends(Store, _super);
 
     Store.prototype.events = {
@@ -43,12 +43,26 @@
       this._onError = __bind(this._onError, this);
       this._onLoadAnnotationsFromSearch = __bind(this._onLoadAnnotationsFromSearch, this);
       this._onLoadAnnotations = __bind(this._onLoadAnnotations, this);
-      this._getAnnotations = __bind(this._getAnnotations, this);      Store.__super__.constructor.apply(this, arguments);
+      this._getAnnotations = __bind(this._getAnnotations, this);
+      var _this = this;
+
+      Store.__super__.constructor.apply(this, arguments);
       this.annotations = [];
+      this.initTaskInfo = {
+        name: "load annotations",
+        code: function(task) {
+          if (!Annotator.supported()) {
+            task.failed("Annotator is not supported.");
+          }
+          return _this._getAnnotations();
+        }
+      };
     }
 
     Store.prototype.pluginInit = function() {
-      if (!Annotator.supported()) return;
+      if (!Annotator.supported()) {
+        return;
+      }
       if (this.annotator.plugins.Auth) {
         return this.annotator.plugins.Auth.withToken(this._getAnnotations);
       } else {
@@ -66,11 +80,12 @@
 
     Store.prototype.annotationCreated = function(annotation) {
       var _this = this;
+
       if (__indexOf.call(this.annotations, annotation) < 0) {
         this.registerAnnotation(annotation);
         return this._apiRequest('create', annotation, function(data) {
-          if (!(data.id != null)) {
-            console.warn(Annotator._t("Warning: No ID returned from server for annotation "), annotation);
+          if (data.id == null) {
+            _this.annotator.log.warn(Annotator._t("Warning: No ID returned from server for annotation "), annotation);
           }
           return _this.updateAnnotation(annotation, data);
         });
@@ -81,6 +96,7 @@
 
     Store.prototype.annotationUpdated = function(annotation) {
       var _this = this;
+
       if (__indexOf.call(this.annotations, annotation) >= 0) {
         return this._apiRequest('update', annotation, (function(data) {
           return _this.updateAnnotation(annotation, data);
@@ -90,6 +106,7 @@
 
     Store.prototype.annotationDeleted = function(annotation) {
       var _this = this;
+
       if (__indexOf.call(this.annotations, annotation) >= 0) {
         return this._apiRequest('destroy', annotation, (function() {
           return _this.unregisterAnnotation(annotation);
@@ -107,7 +124,7 @@
 
     Store.prototype.updateAnnotation = function(annotation, data) {
       if (__indexOf.call(this.annotations, annotation) < 0) {
-        console.error(Annotator._t("Trying to update unregistered annotation!"));
+        this.annotator.log.error(Annotator._t("Trying to update unregistered annotation!"));
       } else {
         $.extend(annotation, data);
       }
@@ -119,9 +136,16 @@
     };
 
     Store.prototype._onLoadAnnotations = function(data) {
-      if (data == null) data = [];
+      var _ref;
+
+      if (data == null) {
+        data = [];
+      }
       this.annotations = this.annotations.concat(data);
-      return this.annotator.loadAnnotations(data.slice());
+      this.annotator.loadAnnotations(data.slice());
+      if (((_ref = this.initTask) != null ? _ref.state() : void 0) === "pending") {
+        return this.initTask.dfd.ready();
+      }
     };
 
     Store.prototype.loadAnnotationsFromSearch = function(searchOptions) {
@@ -129,12 +153,15 @@
     };
 
     Store.prototype._onLoadAnnotationsFromSearch = function(data) {
-      if (data == null) data = {};
+      if (data == null) {
+        data = {};
+      }
       return this._onLoadAnnotations(data.rows || []);
     };
 
     Store.prototype.dumpAnnotations = function() {
       var ann, _i, _len, _ref, _results;
+
       _ref = this.annotations;
       _results = [];
       for (_i = 0, _len = _ref.length; _i < _len; _i++) {
@@ -146,6 +173,7 @@
 
     Store.prototype._apiRequest = function(action, obj, onSuccess) {
       var id, options, request, url;
+
       id = obj && obj.id;
       url = this._urlFor(action, id);
       options = this._apiRequestOptions(action, obj, onSuccess);
@@ -157,6 +185,7 @@
 
     Store.prototype._apiRequestOptions = function(action, obj, onSuccess) {
       var data, method, opts;
+
       method = this._methodFor(action);
       opts = {
         type: method,
@@ -182,7 +211,9 @@
         opts.data = {
           json: data
         };
-        if (this.options.emulateHTTP) opts.data._method = method;
+        if (this.options.emulateHTTP) {
+          opts.data._method = method;
+        }
         return opts;
       }
       opts = $.extend(opts, {
@@ -194,6 +225,7 @@
 
     Store.prototype._urlFor = function(action, id) {
       var url;
+
       url = this.options.prefix != null ? this.options.prefix : '';
       url += this.options.urls[action];
       url = url.replace(/\/:id/, id != null ? '/' + id : '');
@@ -203,6 +235,7 @@
 
     Store.prototype._methodFor = function(action) {
       var table;
+
       table = {
         'create': 'POST',
         'read': 'GET',
@@ -215,16 +248,20 @@
 
     Store.prototype._dataFor = function(annotation) {
       var data, highlights;
+
       highlights = annotation.highlights;
       delete annotation.highlights;
       $.extend(annotation, this.options.annotationData);
       data = JSON.stringify(annotation);
-      if (highlights) annotation.highlights = highlights;
+      if (highlights) {
+        annotation.highlights = highlights;
+      }
       return data;
     };
 
     Store.prototype._onError = function(xhr) {
-      var action, message;
+      var action, message, _ref;
+
       action = xhr._action;
       message = Annotator._t("Sorry we could not ") + action + Annotator._t(" this annotation");
       if (xhr._action === 'search') {
@@ -243,7 +280,10 @@
           message = Annotator._t("Sorry something went wrong with the annotation store");
       }
       Annotator.showNotification(message, Annotator.Notification.ERROR);
-      return console.error(Annotator._t("API request failed:") + (" '" + xhr.status + "'"));
+      this.annotator.log.error(Annotator._t("API request failed:") + (" '" + xhr.status + "'"));
+      if (((_ref = this.initTask) != null ? _ref.state() : void 0) === "pending") {
+        return this.initTask.dfd.failed("API request failed.");
+      }
     };
 
     return Store;

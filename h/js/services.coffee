@@ -49,6 +49,12 @@ class Hypothesis extends Annotator
 
   this.$inject = ['$document', '$location', '$rootScope', '$route', 'drafts']
   constructor: ($document, $location, $rootScope, $route, drafts) ->
+    # We are in an iframe, so the time registered there is invalid. Clearing it.
+    delete window.XLoggerStartTime
+    @log ?= getXLogger "Hypothesis"
+    @log.setLevel XLOG_LEVEL.DEBUG
+    @log.info "Constructor running."
+
     super ($document.find 'body'), noScan: true
 
     # Load plugins
@@ -163,6 +169,12 @@ class Hypothesis extends Annotator
       else
         $rootScope.$apply => this.hide()
     )
+
+    .bind('setLoggerStartTime', (ctx, timestamp) =>
+      @log.debug "Setting logging start time."
+      window.XLoggerStartTime = timestamp
+    )
+
 
   getSynonymURLs: (href) ->
     stringStartsWith = (string, prefix) ->
