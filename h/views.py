@@ -9,6 +9,7 @@ __all__ = [
 from pyramid.view import view_config, view_defaults
 from pyramid.traversal import find_resource
 from pyramid import httpexceptions
+from pyramid.response import Response
 
 from horus.views import (
     AuthController,
@@ -75,6 +76,12 @@ class Annotation(BaseController):
         request.response.charset = 'UTF-8'
         return request.context
 
+@view_defaults(context='h.resources.VersionViewer')
+class Annotation(BaseController):
+    @view_config(accept='text/html')
+    def __html__(self):
+        context = self.request.context
+        return Response(context.version_info)
 
 def includeme(config):
     config.add_view(

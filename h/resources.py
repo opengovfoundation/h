@@ -18,12 +18,14 @@ from pyramid.decorator import reify
 from pyramid.interfaces import ILocation
 
 from zope.interface import implementer
+from git import Repo
+import time
 
 import BeautifulSoup
 
 from h import interfaces
 
-
+import traceback
 import logging
 log = logging.getLogger(__name__)
 
@@ -271,9 +273,53 @@ class AnnotationFactory(BaseResource):
 
         return annotation
 
+class VersionViewer(BaseResource, dict):
+
+    def conf_repo(self):
+        try:
+            self.repo = Repo('.')
+
+            self._branch = self.repo.active_branch.name
+            self.last_commits = [commit for commit in self.repo.iter_commits(self._branch, max_count = 1)]
+            self.lc = self.last_commits[0]
+            self._status = self.repo.git.status()
+            self._commit_id = self.lc.name_rev
+            self._committer = str(self.lc.committer)
+            self._author = str(self.lc.author)
+            self._committed_at = time.asctime(time.gmtime(self.lc.committed_date))
+            self._message = self.lc.message
+            self._summary = self.lc.summary
+
+        except:
+            log.info(traceback.format_exc())
+            self._branch = 'unknown'
+            self._status = 'unknown'
+            self._commit_id = 'unknown'
+            self._committer = 'unknown'
+            self._author = 'unknown'
+            self._committed_at = 'unknown'
+            self._message = 'unknown'
+            self._summary = 'unknown'
+
+        self._version_info = ("<pre>Version info\n\n" +
+            "Using branch: " + self._branch + "\n\n" +
+            "Revision: " + self._commit_id + "\n" +
+            "Summary: " + self._summary + "\n"
+            "Committer: " + self._committer + "\n" +
+            "Committed at: " + self._committed_at + "\n\n" +
+            "Full Comment message:\n" + self._message + "\n\n" +
+            "Author: " + self._author + "\n" +
+            "</pre>")
+
+    @property
+    def version_info(self):
+        if not hasattr(self, 'repo'):
+            self.conf_repo()
+        return self._version_info
 
 def includeme(config):
     config.set_root_factory(RootFactory)
     config.add_route('index', '/')
     RootFactory.app = AppFactory
     RootFactory.a = AnnotationFactory
+    RootFactory.version = VersionViewer
