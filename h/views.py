@@ -77,11 +77,15 @@ class Annotation(BaseController):
         return request.context
 
 @view_defaults(context='h.resources.VersionViewer')
-class Annotation(BaseController):
+class VersionViewer(BaseController):
     @view_config(accept='text/html')
     def __html__(self):
         context = self.request.context
-        return Response(context.version_info)
+        settings = self.request.registry.settings
+        if 'pyramid.debug_all' in settings and settings['pyramid.debug_all']:
+            return Response(context.version_info)
+        else:
+            raise httpexceptions.HTTPNotFound()
 
 def includeme(config):
     config.add_view(
