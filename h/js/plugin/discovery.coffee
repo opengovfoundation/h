@@ -1,19 +1,26 @@
 class Annotator.Plugin.Discovery extends Annotator.Plugin
-  pluginInit: ->
-    @annotator.log.info "Initializing discovery plugin."
+  constructor: ->
+    @initTaskInfo =
+      name: "discovery"
+      code: (task) => this.pluginInit task
 
+  pluginInit: (task) ->
     svc = $('link')
     .filter ->
       this.rel is 'service' and this.type is 'application/annotatorsvc+json'
     .filter ->
       this.href
 
-    return unless svc.length
+    unless svc.length
+      if task then task.failed()
+      return
 
     href = svc[0].href
-    
+
     $.getJSON href, (data) =>
-      return unless data?.links?
+      unless data?.links?
+        if task then task.failed()
+        return
 
       options =
         prefix: href.replace /\/$/, ''
@@ -29,3 +36,4 @@ class Annotator.Plugin.Discovery extends Annotator.Plugin
         options.urls[action] = url.replace(options.prefix, '')
 
       @annotator.publish 'serviceDiscovery', options
+      if task then task.ready()

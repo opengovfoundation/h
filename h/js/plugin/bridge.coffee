@@ -46,8 +46,15 @@ class Annotator.Plugin.Bridge extends Annotator.Plugin
     else
       super
 
+    @initTaskInfo =
+      name: "bridge plugin"
+      code: =>
+        @options.onReady = this.onReady
+        @channel = Channel.build @options
+
   pluginInit: ->
-    @annotator.log.info "Initializing bridge plugin. Connecting to #{@options.origin}"
+    @annotator.log.info "Synchronously initializing bridge plugin. " +
+      "Connecting to #{@options.origin}"
     @options.onReady = this.onReady
     @channel = Channel.build @options
 
@@ -127,6 +134,10 @@ class Annotator.Plugin.Bridge extends Annotator.Plugin
     .bind('showViewer', (ctx, annotations) =>
       @annotator.showViewer (this._parse a for a in annotations)
     )
+    if @initTask?.state() is "pending"
+      # An async plugin init process is pending.
+      # Signal that it's finished.
+      @initTask.dfd.ready()
 
   beforeCreateAnnotation: (annotation, cb) ->
     @channel.call
