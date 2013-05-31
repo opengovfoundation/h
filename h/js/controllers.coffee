@@ -21,6 +21,15 @@ class App
     $compile, $element, $http, $location, $scope, $timeout
     annotator, drafts, flash
   ) ->
+    annotator.init.done =>
+      this.realInit $compile, $element, $http, $location, $scope, $timeout,
+        annotator, drafts, flash
+
+
+  realInit: (
+    $compile, $element, $http, $location, $scope, $timeout,
+    annotator, drafts, flash
+  ) ->
     {plugins, provider} = annotator
     heatmap = annotator.plugins.Heatmap
     dynamicBucket = true
@@ -351,6 +360,13 @@ class Viewer
     'annotator'
   ]
   constructor: (
+    $location, $routeParams, $scope,
+    annotator
+  ) ->
+    annotator.init.done =>
+      this.realInit $location, $routeParams, $scope, annotator
+
+  realInit: (
     $location, $routeParams, $scope,
     annotator
   ) ->
