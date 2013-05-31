@@ -1,21 +1,21 @@
 /*
-** Annotator 1.2.6-dev-fe12560
+** Annotator 1.2.6-dev-ea64ca5
 ** https://github.com/okfn/annotator/
 **
 ** Copyright 2012 Aron Carroll, Rufus Pollock, and Nick Stenning.
 ** Dual licensed under the MIT and GPLv3 licenses.
 ** https://github.com/okfn/annotator/blob/master/LICENSE
 **
-** Built at: 2013-05-24 00:10:42Z
+** Built at: 2013-05-30 15:56:34Z
 */
-
 
 (function() {
   var __bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; },
-    __hasProp = {}.hasOwnProperty,
-    __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
+    __hasProp = Object.prototype.hasOwnProperty,
+    __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor; child.__super__ = parent.prototype; return child; };
 
   Annotator.Plugin.Permissions = (function(_super) {
+
     __extends(Permissions, _super);
 
     Permissions.prototype.events = {
@@ -33,17 +33,12 @@
       },
       userAuthorize: function(action, annotation, user) {
         var token, tokens, _i, _len;
-
         if (annotation.permissions) {
           tokens = annotation.permissions[action] || [];
-          if (tokens.length === 0) {
-            return true;
-          }
+          if (tokens.length === 0) return true;
           for (_i = 0, _len = tokens.length; _i < _len; _i++) {
             token = tokens[_i];
-            if (this.userId(user) === token) {
-              return true;
-            }
+            if (this.userId(user) === token) return true;
           }
           return false;
         } else if (annotation.user) {
@@ -70,7 +65,7 @@
         this.setUser(this.options.user);
         delete this.options.user;
       } else {
-        this.deps.push("auth token");
+        if (!this.options.ignoreToken) this.deps.push("auth token");
       }
     }
 
@@ -79,10 +74,7 @@
     Permissions.prototype.pluginInit = function() {
       var auth, createCallback, self,
         _this = this;
-
-      if (!Annotator.supported()) {
-        return;
-      }
+      if (!Annotator.supported()) return;
       self = this;
       createCallback = function(method, type) {
         return function(field, annotation) {
@@ -122,17 +114,12 @@
           property: 'user',
           isFiltered: function(input, user) {
             var keyword, _i, _len, _ref;
-
             user = _this.options.userString(user);
-            if (!(input && user)) {
-              return false;
-            }
+            if (!(input && user)) return false;
             _ref = input.split(/\s*/);
             for (_i = 0, _len = _ref.length; _i < _len; _i++) {
               keyword = _ref[_i];
-              if (user.indexOf(keyword) === -1) {
-                return false;
-              }
+              if (user.indexOf(keyword) === -1) return false;
             }
             return true;
           }
@@ -147,16 +134,12 @@
     Permissions.prototype.addFieldsToAnnotation = function(annotation) {
       if (annotation) {
         annotation.permissions = this.options.permissions;
-        if (this.user) {
-          return annotation.user = this.user;
-        }
+        if (this.user) return annotation.user = this.user;
       }
     };
 
     Permissions.prototype.authorize = function(action, annotation, user) {
-      if (user === void 0) {
-        user = this.user;
-      }
+      if (user === void 0) user = this.user;
       if (this.options.userAuthorize) {
         return this.options.userAuthorize.call(this.options, action, annotation, user);
       } else {
@@ -166,12 +149,9 @@
 
     Permissions.prototype.updatePermissionsField = function(action, field, annotation) {
       var input;
-
       field = $(field).show();
       input = field.find('input').removeAttr('disabled');
-      if (!this.authorize('admin', annotation)) {
-        field.hide();
-      }
+      if (!this.authorize('admin', annotation)) field.hide();
       if (this.authorize(action, annotation || {}, null)) {
         return input.attr('checked', 'checked');
       } else {
@@ -181,7 +161,6 @@
 
     Permissions.prototype.updateAnnotationPermissions = function(type, field, annotation) {
       var dataKey;
-
       if (!annotation.permissions) {
         annotation.permissions = this.options.permissions;
       }
@@ -195,7 +174,6 @@
 
     Permissions.prototype.updateViewer = function(field, annotation, controls) {
       var user, username;
-
       field = $(field);
       username = this.options.userString(annotation.user);
       if (annotation.user && username && typeof username === 'string') {
@@ -205,12 +183,8 @@
         field.remove();
       }
       if (controls) {
-        if (!this.authorize('update', annotation)) {
-          controls.hideEdit();
-        }
-        if (!this.authorize('delete', annotation)) {
-          return controls.hideDelete();
-        }
+        if (!this.authorize('update', annotation)) controls.hideEdit();
+        if (!this.authorize('delete', annotation)) return controls.hideDelete();
       }
     };
 
