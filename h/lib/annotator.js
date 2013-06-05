@@ -1,12 +1,12 @@
 /*
-** Annotator 1.2.6-dev-08d24b1
+** Annotator 1.2.6-dev-ba1e0b2
 ** https://github.com/okfn/annotator/
 **
 ** Copyright 2012 Aron Carroll, Rufus Pollock, and Nick Stenning.
 ** Dual licensed under the MIT and GPLv3 licenses.
 ** https://github.com/okfn/annotator/blob/master/LICENSE
 **
-** Built at: 2013-05-24 02:02:43Z
+** Built at: 2013-06-05 21:56:35Z
 */
 
 
@@ -63,7 +63,7 @@
         _results = [];
         for (_i = 0, _len = objects.length; _i < _len; _i++) {
           obj = objects[_i];
-          text = obj instanceof Error ? obj.stack : JSON.stringify(obj, null, 2);
+          text = obj == null ? "null" : obj instanceof Error ? obj.stack : JSON.stringify(obj, null, 2);
           lines = text.split("\n");
           _results.push((function() {
             var _j, _len1, _results1;
@@ -160,7 +160,9 @@
       _ref2 = this.instances;
       for (_i = 0, _len = _ref2.length; _i < _len; _i++) {
         instance = _ref2[_i];
-        instance.performSyncUpdateOnNode(node);
+        if (instance.rootNode.contains(node)) {
+          instance.performSyncUpdateOnNode(node);
+        }
       }
       return null;
     };
@@ -189,7 +191,7 @@
       }
       this.rootWin = iframe.contentWindow;
       if (this.rootWin == null) {
-        throw new Error("Can't access contents of the spefified iframe!");
+        throw new Error("Can't access contents of the specified iframe!");
       }
       this.rootNode = this.rootWin.document;
       return this.pathStartNode = this.getBody();
@@ -217,7 +219,12 @@
         this.log.debug("We have a valid DOM structure cache. Not scanning.");
         return this.path;
       }
+      if (!this.pathStartNode.ownerDocument.body.contains(this.pathStartNode)) {
+        this.log.debug("We cannot map nodes that are not attached.");
+        return this.path;
+      }
       this.log.debug("No valid cache, will have to do a scan.");
+      this.documentChanged();
       startTime = this.timestamp();
       this.path = {};
       pathStart = this.getDefaultPath();
@@ -249,6 +256,7 @@
         onFinished(this.path);
       }
       this.log.debug("No valid cache, will have to do a scan.");
+      this.documentChanged();
       startTime = this.timestamp();
       this.path = {};
       pathStart = this.getDefaultPath();
@@ -2223,8 +2231,7 @@
       this.dfd._notify = this.dfd.notify;
       this.dfd.notify = function(data) {
         return _this.dfd._notify($.extend(data, {
-          task: _this,
-          taskName: _this._name
+          task: _this
         }));
       };
       this.dfd._resolve = this.dfd.resolve;
@@ -2326,32 +2333,42 @@
       _ref3 = this._depsResolved;
       for (_k = 0, _len2 = _ref3.length; _k < _len2; _k++) {
         dep = _ref3[_k];
-        if (!dep.isResolved()) {
+        if (dep.state() !== "resolved") {
           this.log.debug("What am I doing here? Out of the " + this._depsResolved.length + " dependencies, '" + dep._name + "' for the current task '" + this._name + "' has not yet been resolved!");
           return;
         }
       }
       this.started = true;
       return setTimeout(function() {
+        var exception;
+
         _this.dfd.notify({
           progress: 0,
           text: "Starting"
         });
         _this.dfd.startTime = new Date().getTime();
-        return _this._todo(_this.dfd, _this._data);
+        try {
+          return _this._todo(_this.dfd, _this._data);
+        } catch (_error) {
+          exception = _error;
+          _this.log.error("Error while executing task '" + _this._name + "': " + exception);
+          _this.log.error(exception);
+          return _this.dfd.failed("Exception: " + exception.message);
+        }
       });
     };
 
-    _Task.prototype._skip = function() {
+    _Task.prototype._skip = function(reason) {
       if (this.started) {
         return;
       }
       this.started = true;
+      reason = "Skipping, because " + reason;
       this.dfd.notify({
         progress: 1,
-        text: "Skipping, because some dependencies have failed."
+        text: reason
       });
-      return this.dfd._reject();
+      return this.dfd._reject(this._name + " was skipped, because " + reason);
     };
 
     return _Task;
@@ -2366,14 +2383,20 @@
       this.count = 0;
     }
 
-    _TaskGen.prototype.create = function(info) {
+    _TaskGen.prototype.create = function(info, useDefaultProgress) {
+      var instanceInfo;
+
+      if (useDefaultProgress == null) {
+        useDefaultProgress = true;
+      }
       this.count += 1;
-      return this.manager.create({
+      instanceInfo = {
         name: this.name + " #" + this.count + ": " + info.instanceName,
         code: this.todo,
         deps: info.deps,
         data: info.data
-      });
+      };
+      return this.manager.create(instanceInfo, useDefaultProgress);
     };
 
     return _TaskGen;
@@ -2396,6 +2419,7 @@
       this.subTasks = {};
       this.pendingSubTasks = 0;
       this.failedSubTasks = 0;
+      this.failReasons = [];
       this.trigger = this.createSubTask({
         weight: 0,
         name: info.name + "__init",
@@ -2405,20 +2429,25 @@
 
     _CompositeTask.prototype._finished = function() {
       if (this.failedSubTasks) {
-        return this.dfd.failed();
+        return this.dfd.failed(this.failReasons);
       } else {
         return this.dfd.ready();
       }
     };
 
+    _CompositeTask.prototype._deleteSubTask = function(taskID) {
+      delete this.subTasks[taskID];
+      return this.pendingSubTasks -= 1;
+    };
+
     _CompositeTask.prototype.addSubTask = function(info) {
-      var task, weight,
+      var task, weight, _ref3,
         _this = this;
 
-      weight = info.weight;
-      if (weight == null) {
-        throw new Error("Trying to add subTask with no weight!");
+      if (this.dfd.state() !== "pending") {
+        throw new Error("Can not add subTask to a finished task!");
       }
+      weight = (_ref3 = info.weight) != null ? _ref3 : 1;
       task = info.task;
       if (task == null) {
         throw new Error("Trying to add subTask with no task!");
@@ -2427,6 +2456,7 @@
         task.addDeps(this.trigger);
       }
       this.subTasks[task.taskID] = {
+        name: task._name,
         weight: weight,
         progress: 0,
         text: "no info about this subtask"
@@ -2438,28 +2468,35 @@
           return _this._finished();
         }
       });
-      task.fail(function() {
+      task.fail(function(reason) {
         _this.failedSubTasks += 1;
+        if (reason) {
+          _this.failReasons.push(reason);
+        }
         _this.pendingSubTasks -= 1;
         if (!_this.pendingSubTasks) {
           return _this._finished();
         }
       });
-      return task.progress(function(info) {
-        var countId, countInfo, progress, report, taskInfo, totalWeight, _ref3;
+      task.progress(function(info) {
+        var countId, countInfo, key, progress, report, taskInfo, totalWeight, value, _ref4;
 
         task = info.task;
-        delete info.task;
         if (task === _this.trigger) {
           return;
         }
         taskInfo = _this.subTasks[task.taskID];
-        $.extend(taskInfo, info);
+        for (key in info) {
+          value = info[key];
+          if (key !== "task") {
+            taskInfo[key] = value;
+          }
+        }
         progress = 0;
         totalWeight = 0;
-        _ref3 = _this.subTasks;
-        for (countId in _ref3) {
-          countInfo = _ref3[countId];
+        _ref4 = _this.subTasks;
+        for (countId in _ref4) {
+          countInfo = _ref4[countId];
           progress += countInfo.progress * countInfo.weight;
           totalWeight += countInfo.weight;
         }
@@ -2471,19 +2508,53 @@
         }
         return _this.dfd.notify(report);
       });
+      return task;
+    };
+
+    _CompositeTask.prototype._getSubTaskIdByName = function(name) {
+      var id, ids, info;
+
+      ids = (function() {
+        var _ref3, _results;
+
+        _ref3 = this.subTasks;
+        _results = [];
+        for (id in _ref3) {
+          info = _ref3[id];
+          if (info.name === name) {
+            _results.push(id);
+          }
+        }
+        return _results;
+      }).call(this);
+      if (ids.length !== 0) {
+        return ids[0];
+      } else {
+        return null;
+      }
     };
 
     _CompositeTask.prototype.createSubTask = function(info) {
-      var task, w;
+      var oldSubTaskID, w;
 
       w = info.weight;
       delete info.weight;
-      task = this.manager.create(info, false);
-      this.addSubTask({
+      oldSubTaskID = this._getSubTaskIdByName(info.name);
+      if (oldSubTaskID != null) {
+        this.log.debug("When defining sub-task '" + info.name + "', overriding this existing sub-task: " + oldSubTaskID);
+        this._deleteSubTask(oldSubTaskID);
+      }
+      return this.addSubTask({
         weight: w,
-        task: task
+        task: this.manager.create(info, false)
       });
-      return task;
+    };
+
+    _CompositeTask.prototype.createDummySubTask = function(info) {
+      return this.addSubTask({
+        weight: 0,
+        task: this.manager.createDummy(info, false)
+      });
     };
 
     return _CompositeTask;
@@ -2515,7 +2586,7 @@
         throw new Error("Trying to create a task without a name!");
       }
       if (this.tasks[name] != null) {
-        this.log.info("Overriding existing task '" + name + "' with new definition!");
+        this.log.debug("Overriding existing task '" + name + "' with new definition!");
       }
       return name;
     };
@@ -2540,11 +2611,14 @@
       return task;
     };
 
-    TaskManager.prototype.createDummy = function(info) {
+    TaskManager.prototype.createDummy = function(info, useDefaultProgress) {
+      if (useDefaultProgress == null) {
+        useDefaultProgress = true;
+      }
       info.code = function(task) {
         return task.ready();
       };
-      return this.create(info);
+      return this.create(info, useDefaultProgress);
     };
 
     TaskManager.prototype.createGenerator = function(info) {
@@ -2620,6 +2694,83 @@
         }
       }
       return null;
+    };
+
+    TaskManager.prototype.dumpPending = function() {
+      var dep, deps, exception, failed, name, pending, resolved, running, t, task, _k, _len2, _ref3, _results;
+
+      failed = (function() {
+        var _ref3, _results;
+
+        _ref3 = this.tasks;
+        _results = [];
+        for (name in _ref3) {
+          task = _ref3[name];
+          if (task.state() === "rejected") {
+            _results.push(name);
+          }
+        }
+        return _results;
+      }).call(this);
+      this.log.info("Failed tasks:", failed);
+      resolved = (function() {
+        var _ref3, _results;
+
+        _ref3 = this.tasks;
+        _results = [];
+        for (name in _ref3) {
+          task = _ref3[name];
+          if (task.state() === "resolved") {
+            _results.push(name);
+          }
+        }
+        return _results;
+      }).call(this);
+      this.log.info("Finished tasks:", resolved);
+      running = (function() {
+        var _ref3, _results;
+
+        _ref3 = this.tasks;
+        _results = [];
+        for (name in _ref3) {
+          task = _ref3[name];
+          if (task.state() === "pending" && task.started) {
+            _results.push(name);
+          }
+        }
+        return _results;
+      }).call(this);
+      this.log.info("Currently running tasks:", running);
+      this.log.info("Waiting tasks:");
+      _ref3 = this.tasks;
+      _results = [];
+      for (name in _ref3) {
+        task = _ref3[name];
+        if (!(!task.started)) {
+          continue;
+        }
+        t = "Task '" + name + "'";
+        this.log.info("Analyzing waiting " + t);
+        try {
+          deps = task.resolveDeps();
+          if (deps.length === 0 && !task.started) {
+            _results.push(this.log.info(t + " has no dependencies; just nobody has started it. Schedule() ? "));
+          } else {
+            pending = [];
+            for (_k = 0, _len2 = deps.length; _k < _len2; _k++) {
+              dep = deps[_k];
+              if (dep.state() === "pending") {
+                pending.push(dep._name);
+              }
+            }
+            _results.push(this.log.info(t + ": pending dependencies: ", pending));
+          }
+        } catch (_error) {
+          exception = _error;
+          _results.push(this.log.info(t + " has unresolved dependencies", exception));
+        }
+      }
+      return _results;
     };
 
     return TaskManager;
@@ -2732,7 +2883,7 @@
       if ((_ref4 = this.log) == null) {
         this.log = getXLogger(givenName);
       }
-      this.log.info("Annotator constructor running.");
+      this.log.debug("Annotator constructor running with options", options);
       myName = this.log.name;
       if ((_ref5 = this.tasklog) == null) {
         this.tasklog = getXLogger(myName + " tasks");
@@ -2744,7 +2895,7 @@
       }
       this.domMapper = new DomTextMapper(myName + " mapper");
       this.domMatcher = new DomTextMatcher(this.domMapper, myName + " matcher");
-      this.tasks = new TaskManager("Annotator");
+      this.tasks = new TaskManager(myName);
       this.tasks.addDefaultProgress(function(info) {
         return _this.defaultNotify(info);
       });
@@ -2763,8 +2914,8 @@
       this._init = new jQuery.Deferred();
       this.init = this._init.promise();
       this._setupDynamicStyle();
-      this._setupViewer()._setupEditor();
       this._setupWrapper();
+      this._setupViewer()._setupEditor();
       this.adder = $(this.html.adder).appendTo(this.wrapper).hide();
       if (!this.options.noScan) {
         this._scanSync();
@@ -2777,14 +2928,13 @@
     };
 
     Annotator.prototype.defineAsyncInitTasks = function() {
-      var scan,
+      var info, scan,
         _this = this;
 
       this.init = this.tasks.createComposite({
         name: "Booting Annotator"
       });
       this.init.createSubTask({
-        weight: 1,
         name: "dynamic CSS styles",
         code: function(task) {
           _this._setupDynamicStyle();
@@ -2792,7 +2942,6 @@
         }
       });
       this.init.createSubTask({
-        weight: 1,
         name: "wrapper",
         code: function(task) {
           _this._setupWrapper();
@@ -2800,7 +2949,6 @@
         }
       });
       this.init.createSubTask({
-        weight: 1,
         name: "adder",
         deps: ["wrapper"],
         code: function(task) {
@@ -2809,8 +2957,8 @@
         }
       });
       this.init.createSubTask({
-        weight: 1,
         name: "viewer & editor",
+        deps: ["wrapper"],
         code: function(task) {
           _this._setupViewer()._setupEditor();
           return task.ready();
@@ -2827,21 +2975,21 @@
         }
       });
       if (this.options.noScan) {
-        scan = this.tasks.createDummy({
+        scan = this.init.createDummySubTask({
           name: "Skipping scan"
         });
       } else {
-        scan = this._scanGen.create({
+        info = {
           instanceName: "Initial scan",
           deps: ["wrapper"]
+        };
+        scan = this._scanGen.create(info, false);
+        this.init.addSubTask({
+          weight: 20,
+          task: scan
         });
       }
-      this.init.addSubTask({
-        weight: 20,
-        task: scan
-      });
       return this.init.createSubTask({
-        weight: 0,
         name: "document events",
         deps: ["wrapper", "viewer & editor", scan, "dynamic CSS styles", "adder"],
         code: function(task) {
@@ -2864,12 +3012,12 @@
       }
       num = Math.round(100 * info.progress);
       progressText = num.toString() + "%";
-      return this.tasklog.debug(info.taskName + ": " + progressText + " - " + info.text);
+      return this.tasklog.debug(info.task._name + ": " + progressText + " - " + info.text);
     };
 
     Annotator.prototype.initAsync = function() {
-      this.defineAsyncInitTasks();
       this.asyncMode = true;
+      this.defineAsyncInitTasks();
       return this.tasks.schedule();
     };
 
@@ -3426,7 +3574,7 @@
       var klass, plugin, taskInfo, _base, _ref3,
         _this = this;
 
-      this.tasklog.debug("Loading plugin '" + name + "'...");
+      this.log.debug("Loading plugin '" + name + "'...");
       if (this.plugins[name]) {
         this.log.error(_t("You cannot have more than one instance of any plugin."));
       } else {
@@ -3436,7 +3584,11 @@
           plugin.annotator = this;
           if (this.asyncMode) {
             taskInfo = plugin.initTaskInfo;
+            if ((taskInfo != null) && !taskInfo.name) {
+              taskInfo.name = "plugin " + name;
+            }
             if ((taskInfo == null) && (plugin.pluginInit != null)) {
+              this.tasklog.trace("Plugin '" + name + "' does not have initTaskInfo. Creating init task around the synchronous pluginInit() method.");
               taskInfo = {
                 name: "plugin " + name,
                 deps: plugin.deps,
@@ -3451,7 +3603,9 @@
             if ((options != null ? options.deps : void 0) != null) {
               plugin.initTask.addDeps(options.deps);
             }
-            this.tasks.schedule();
+            if (this.init.started) {
+              this.tasks.schedule();
+            }
           } else {
             this.log.debug("Synchronously initing plugin '" + name + "'.");
             if (typeof (_base = this.plugins[name]).pluginInit === "function") {

@@ -1,12 +1,12 @@
 /*
-** Annotator 1.2.6-dev-fe12560
+** Annotator 1.2.6-dev-b1be5f2
 ** https://github.com/okfn/annotator/
 **
 ** Copyright 2012 Aron Carroll, Rufus Pollock, and Nick Stenning.
 ** Dual licensed under the MIT and GPLv3 licenses.
 ** https://github.com/okfn/annotator/blob/master/LICENSE
 **
-** Built at: 2013-05-24 00:10:42Z
+** Built at: 2013-06-05 17:38:22Z
 */
 
 
@@ -70,7 +70,9 @@
         this.setUser(this.options.user);
         delete this.options.user;
       } else {
-        this.deps.push("auth token");
+        if (!this.options.ignoreToken) {
+          this.deps.push("auth token");
+        }
       }
     }
 

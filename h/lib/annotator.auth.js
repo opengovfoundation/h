@@ -1,12 +1,12 @@
 /*
-** Annotator 1.2.6-dev-ae08566
+** Annotator 1.2.6-dev-c4e3b43
 ** https://github.com/okfn/annotator/
 **
 ** Copyright 2012 Aron Carroll, Rufus Pollock, and Nick Stenning.
 ** Dual licensed under the MIT and GPLv3 licenses.
 ** https://github.com/okfn/annotator/blob/master/LICENSE
 **
-** Built at: 2013-05-24 00:50:10Z
+** Built at: 2013-06-05 17:10:15Z
 */
 
 
@@ -128,9 +128,7 @@
         code: function(task) {
           if (_this.options.token) {
             _this.setToken(_this.options.token);
-            return task.ready({
-              token: _this.token
-            });
+            return task.ready;
           } else {
             return _this.requestToken();
           }
@@ -170,7 +168,7 @@
         _this.annotator.log.error("" + msg + " " + err, xhr);
         Annotator.showNotification("" + msg + " " + xhr.responseText, Annotator.Notification.ERROR);
         if (((_ref = _this.initTask) != null ? _ref.state() : void 0) === "pending") {
-          return _this.initTask.dfd.failed(msg);
+          return _this.initTask.dfd.failed(msg + xhr.responseText);
         }
       }).always(function() {
         return _this.requestInProgress = false;
@@ -237,7 +235,7 @@
     };
 
     Auth.prototype.withToken = function(callback) {
-      if (this.asyncMode) {
+      if (this.annotator.asyncMode) {
         throw new Error("You are not supposed to use withToken in Async Mode!");
       }
       if (callback == null) {
