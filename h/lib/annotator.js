@@ -1,12 +1,12 @@
 /*
-** Annotator 1.2.6-dev-b2cfca0
+** Annotator 1.2.6-dev-fe8a355
 ** https://github.com/okfn/annotator/
 **
 ** Copyright 2012 Aron Carroll, Rufus Pollock, and Nick Stenning.
 ** Dual licensed under the MIT and GPLv3 licenses.
 ** https://github.com/okfn/annotator/blob/master/LICENSE
 **
-** Built at: 2013-05-31 16:41:39Z
+** Built at: 2013-06-06 12:42:45Z
 */
 
 (function() {
@@ -2124,14 +2124,15 @@
       });
     };
 
-    _Task.prototype._skip = function() {
+    _Task.prototype._skip = function(reason) {
       if (this.started) return;
       this.started = true;
+      reason = "Skipping, because " + reason;
       this.dfd.notify({
         progress: 1,
-        text: "Skipping, because some dependencies have failed."
+        text: reason
       });
-      return this.dfd._reject();
+      return this.dfd._reject(this._name + " was skipped, because " + reason);
     };
 
     return _Task;
@@ -2145,19 +2146,25 @@
       this.name = info.name;
       this.todo = info.code;
       this.count = 0;
+      this.composite = info.composite;
     }
 
     _TaskGen.prototype.create = function(info, useDefaultProgress) {
       var instanceInfo;
       if (useDefaultProgress == null) useDefaultProgress = true;
       this.count += 1;
+      if (info == null) info = {};
       instanceInfo = {
         name: this.name + " #" + this.count + ": " + info.instanceName,
         code: this.todo,
         deps: info.deps,
         data: info.data
       };
-      return this.manager.create(instanceInfo, useDefaultProgress);
+      if (this.composite) {
+        return this.manager.createComposite(instanceInfo);
+      } else {
+        return this.manager.create(instanceInfo, useDefaultProgress);
+      }
     };
 
     return _TaskGen;
@@ -2180,16 +2187,18 @@
       this.subTasks = {};
       this.pendingSubTasks = 0;
       this.failedSubTasks = 0;
+      this.failReasons = [];
       this.trigger = this.createSubTask({
         weight: 0,
         name: info.name + "__init",
         code: function(task) {}
       });
+      this.lastSubTask = this.trigger;
     }
 
     _CompositeTask.prototype._finished = function() {
       if (this.failedSubTasks) {
-        return this.dfd.failed();
+        return this.dfd.failed(this.failReasons);
       } else {
         return this.dfd.ready();
       }
@@ -2221,8 +2230,9 @@
         _this.pendingSubTasks -= 1;
         if (!_this.pendingSubTasks) return _this._finished();
       });
-      task.fail(function() {
+      task.fail(function(reason) {
         _this.failedSubTasks += 1;
+        if (reason) _this.failReasons.push(reason);
         _this.pendingSubTasks -= 1;
         if (!_this.pendingSubTasks) return _this._finished();
       });
@@ -2249,6 +2259,7 @@
         if (info.text != null) report.text = task._name + ": " + info.text;
         return _this.dfd.notify(report);
       });
+      this.lastSubTask = task;
       return task;
     };
 
@@ -2316,7 +2327,7 @@
       name = info != null ? info.name : void 0;
       if (name == null) throw new Error("Trying to create a task without a name!");
       if (this.tasks[name] != null) {
-        this.log.info("Overriding existing task '" + name + "' with new definition!");
+        this.log.debug("Overriding existing task '" + name + "' with new definition!");
       }
       return name;
     };
@@ -2583,7 +2594,7 @@
       Annotator.__super__.constructor.apply(this, arguments);
       givenName = (_ref2 = options != null ? options.annotatorName : void 0) != null ? _ref2 : "Annotator";
       if (this.log == null) this.log = getXLogger(givenName);
-      this.log.info("Annotator constructor running with options", options);
+      this.log.debug("Annotator constructor running with options", options);
       myName = this.log.name;
       if (this.tasklog == null) this.tasklog = getXLogger(myName + " tasks");
       this.alog = getXLogger(myName + " anchoring");
@@ -2594,6 +2605,22 @@
       this.tasks = new TaskManager(myName);
       this.tasks.addDefaultProgress(function(info) {
         return _this.defaultNotify(info);
+      });
+      this.loadListTaskGen = this.tasks.createGenerator({
+        name: "anchoring annotation list",
+        composite: true
+      });
+      this.loadBatchTaskGen = this.tasks.createGenerator({
+        name: "anchoring annotation batch",
+        code: function(task, data) {
+          var n, _k, _len3, _ref3;
+          _ref3 = data.annotations;
+          for (_k = 0, _len3 = _ref3.length; _k < _len3; _k++) {
+            n = _ref3[_k];
+            _this.setupAnnotation(n);
+          }
+          return task.ready();
+        }
       });
       if (!this.options.noInit) {
         if (this.options.asyncInit) {
@@ -3130,27 +3157,39 @@
     };
 
     Annotator.prototype.loadAnnotations = function(annotations) {
-      var clone, loader,
+      var annBatch, batchTask, from, info, to, _ref2,
         _this = this;
       if (annotations == null) annotations = [];
-      loader = function(annList) {
-        var n, now, _k, _len3;
-        if (annList == null) annList = [];
-        now = annList.splice(0, 10);
-        for (_k = 0, _len3 = now.length; _k < _len3; _k++) {
-          n = now[_k];
-          _this.setupAnnotation(n);
-        }
-        if (annList.length > 0) {
-          return setTimeout((function() {
-            return loader(annList);
-          }), 10);
-        } else {
-          return _this.publish('annotationsLoaded', [clone]);
-        }
-      };
-      clone = annotations.slice();
-      if (annotations.length) loader(annotations);
+      if (!annotations.length) return;
+      if (!this.pendingLoad) {
+        this.pendingLoad = this.loadListTaskGen.create({
+          instanceName: ""
+        });
+        this.pendingLoadList = [];
+        this.pendingLoad.done(function() {
+          _this.publish('annotationsLoaded', [_this.pendingLoadList]);
+          return delete _this.pendingLoad;
+        });
+      }
+      this.pendingLoadList = this.pendingLoadList.concat(annotations);
+      to = 0;
+      while (annotations.length) {
+        annBatch = annotations.splice(0, 10);
+        _ref2 = [to + 1, to + annBatch.length], from = _ref2[0], to = _ref2[1];
+        info = {
+          instanceName: from + "-" + to,
+          data: {
+            annotations: annBatch
+          }
+        };
+        batchTask = this.loadBatchTaskGen.create(info, false);
+        this.pendingLoad.addSubTask({
+          deps: this.pendingLoad.lastSubTask,
+          weight: annBatch.length,
+          task: batchTask
+        });
+      }
+      this.tasks.schedule();
       return this;
     };
 
@@ -3193,7 +3232,7 @@
     Annotator.prototype.addPlugin = function(name, options) {
       var klass, plugin, taskInfo, _base, _ref2,
         _this = this;
-      this.log.info("Loading plugin '" + name + "'...");
+      this.log.debug("Loading plugin '" + name + "'...");
       if (this.plugins[name]) {
         this.log.error(_t("You cannot have more than one instance of any plugin."));
       } else {
@@ -3203,6 +3242,9 @@
           plugin.annotator = this;
           if (this.asyncMode) {
             taskInfo = plugin.initTaskInfo;
+            if ((taskInfo != null) && !taskInfo.name) {
+              taskInfo.name = "plugin " + name;
+            }
             if ((!(taskInfo != null)) && (plugin.pluginInit != null)) {
               this.tasklog.trace("Plugin '" + name + "' does not have initTaskInfo. Creating init task around the synchronous pluginInit() method.");
               taskInfo = {

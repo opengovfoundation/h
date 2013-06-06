@@ -7,6 +7,7 @@ class Hypothesis extends Annotator
     Discovery: {}
     Heatmap: {}
     Permissions:
+      ignoreToken: true
       permissions:
         read: ['group:__world__']
       userAuthorize: (action, annotation, user) ->
@@ -42,28 +43,161 @@ class Hypothesis extends Annotator
   # Internal state
   dragging: false     # * To enable dragging only when we really want to
 
-  # Here as a noop just to make the Permissions plugin happy
-  # XXX: Change me when Annotator stops assuming things about viewers
-  viewer:
-    addField: (-> )
+  defineAsyncInitTasks: ->
+    super
 
+    # This task overrides an upstream task
+    @init.createSubTask
+      weight: 1
+      name: "viewer & editor"
+      code: (task) =>
+        # Here as a noop just to make the Permissions plugin happy
+        # XXX: Change me when Annotator stops assuming things about viewers
+        @viewer = 
+          addField: (-> )
+        task.ready()
+
+    # This task overrides an upstream task
+    @init.createDummySubTask name: "dynamic CSS style"
+
+    $location = @element.injector().get '$location'
+    $window = @element.injector().get '$window'
+    $rootScope = @element.injector().get '$rootScope'
+    drafts = @element.injector().get 'drafts'
+
+    origin = $location.search().xdm
+
+    # Create a task to set up the bridge plugin,
+    # which bridges the main annotation methods
+    # between the host page and the panel widget.
+    # (Calling addPlugin will create an async task.)
+    whitelist = ['diffHTML', 'quote', 'ranges', 'target', 'id']
+    this.addPlugin 'Bridge',
+      origin: origin
+      window: $window.parent
+      formatter: (annotation) =>
+        formatted = {}
+        for k, v of annotation when k in whitelist
+          formatted[k] = v
+        formatted
+      parser: (annotation) =>
+        parsed = {}
+        for k, v of annotation when k in whitelist
+          parsed[k] = v
+        parsed
+
+    @init.createSubTask
+      weight: 1
+      name: "api channel"
+      code: (task) =>
+        @api = Channel.build
+          origin: origin
+          scope: 'annotator:api'
+          window: $window.parent
+          onReady: =>
+            # Signal that the task is done    
+            task.ready()
+
+        .bind('addToken', (ctx, token) =>
+          @element.scope().token = token
+          @element.scope().$digest()
+        )        
+
+    @init.createSubTask
+      weight: 1
+      name: "panel channel"
+      code: (task) =>
+        @provider = Channel.build
+          origin: origin
+          scope: 'annotator:panel'
+          window: $window.parent
+          onReady: =>
+            # Signal that the task is done
+            task.ready()
+
+            # Dodge toolbars [DISABLE]
+            #@provider.getMaxBottom (max) =>
+            #  @element.css('margin-top', "#{max}px")
+            #  @element.find('.topbar').css("top", "#{max}px")
+            #  @element.find('#gutter').css("margin-top", "#{max}px")
+            #  @plugins.Heatmap.BUCKET_THRESHOLD_PAD += max
+
+         @provider
+          .bind('publish', (ctx, args...) => this.publish args...)
+
+          .bind('back', =>
+            # This guy does stuff when you "back out" of the interface.
+            # (Currently triggered by a click on the source page.)
+            return unless drafts.discard()
+            if $location.path() == '/viewer' and $location.search()?.id?
+              $rootScope.$apply => $location.search('id', null).replace()
+            else
+              $rootScope.$apply => this.hide()
+          )
+
+          .bind('setLoggerStartTime', (ctx, timestamp) =>
+            @log.debug "Setting logging start time."
+            window.XLoggerStartTime = timestamp
+            @log.debug "Now we have consistent timing."
+          )
+
+    @init.createSubTask
+      name: "href"
+      deps: [
+        "panel channel", # we are talking to @provider
+        "discovery" # we need the store options from discovery
+      ]
+      code: (task) =>
+        # Get the location of the annotated document
+        @provider.call
+          method: 'getHref'
+          success: (href) =>
+            options = angular.extend {}, (@options.Store or {}),
+              annotationData:
+                uri: href
+              loadFromSearch:
+                limit: 1000
+                uri: href
+              # We don't want to trigger a loading on plugin init
+              noLoading: true
+
+            @options.Store = options
+            task.ready()
+
+    @init.createSubTask
+      name: "load store plugin"
+      deps: ["href"] # we need the store options prepared with the right href
+      code: (task) =>
+        this.addPlugin 'Store', @options.Store
+        this.patch_store this.plugins.Store
+        task.ready()
+
+
+    # Load plugins
+    # (This will create the appropriate init tasks, too.)
+    for own name, opts of @options
+      if not @plugins[name] and name of Annotator.Plugin
+        this.addPlugin(name, opts)
+                
   this.$inject = ['$document', '$location', '$rootScope', '$route', 'drafts']
   constructor: ($document, $location, $rootScope, $route, drafts) ->
+
+    window.wtfh = this
+        
     # We are in an iframe, so the time registered there is invalid. Clearing it.
     delete window.XLoggerStartTime
     @log ?= getXLogger "Hypothesis"
     @log.setLevel XLOG_LEVEL.DEBUG
     @log.debug "Started constructor."
 
-    super ($document.find 'body'), noScan: true
 
-    # Load plugins
-    for own name, opts of @options
-      if not @plugins[name] and name of Annotator.Plugin
-        this.addPlugin(name, opts)
+    super ($document.find 'body'),
+      noScan: true
+      noInit: true
 
-    # Set up XDM connection
-    this._setupXDM()
+    @tasklog.setLevel XLOG_LEVEL.DEBUG
+
+    this.initAsync() 
 
     # Add some info to new annotations
     this.subscribe 'beforeAnnotationCreated', (annotation) =>
@@ -109,74 +243,7 @@ class Hypothesis extends Annotator
 
     # Reload the route after annotations are loaded
     this.subscribe 'annotationsLoaded', -> $route.reload()
-    @log.info "Finished constructor."
-
-  _setupXDM: ->
-    $location = @element.injector().get '$location'
-    $rootScope = @element.injector().get '$rootScope'
-    $window = @element.injector().get '$window'
-    drafts = @element.injector().get 'drafts'
-
-    # Set up the bridge plugin, which bridges the main annotation methods
-    # between the host page and the panel widget.
-    whitelist = ['diffHTML', 'quote', 'ranges', 'target', 'id']
-    this.addPlugin 'Bridge',
-      origin: $location.search().xdm
-      window: $window.parent
-      formatter: (annotation) =>
-        formatted = {}
-        for k, v of annotation when k in whitelist
-          formatted[k] = v
-        formatted
-      parser: (annotation) =>
-        parsed = {}
-        for k, v of annotation when k in whitelist
-          parsed[k] = v
-        parsed
-
-    @api = Channel.build
-      origin: $location.search().xdm
-      scope: 'annotator:api'
-      window: $window.parent
-
-    .bind('addToken', (ctx, token) =>
-      @element.scope().token = token
-      @element.scope().$digest()
-    )
-
-    @provider = Channel.build
-      origin: $location.search().xdm
-      scope: 'annotator:panel'
-      window: $window.parent
-      onReady: => @log.info "Sidepanel: channel is ready"
-
-        # Dodge toolbars [DISABLE]
-        #@provider.getMaxBottom (max) =>
-        #  @element.css('margin-top', "#{max}px")
-        #  @element.find('.topbar').css("top", "#{max}px")
-        #  @element.find('#gutter').css("margin-top", "#{max}px")
-        #  @plugins.Heatmap.BUCKET_THRESHOLD_PAD += max
-
-    @provider
-
-    .bind('publish', (ctx, args...) => this.publish args...)
-
-    .bind('back', =>
-      # This guy does stuff when you "back out" of the interface.
-      # (Currently triggered by a click on the source page.)
-      return unless drafts.discard()
-      if $location.path() == '/viewer' and $location.search()?.id?
-        $rootScope.$apply => $location.search('id', null).replace()
-      else
-        $rootScope.$apply => this.hide()
-    )
-
-    .bind('setLoggerStartTime', (ctx, timestamp) =>
-      @log.debug "Setting logging start time."
-      window.XLoggerStartTime = timestamp
-      @log.debug "Now we have consistent timing."
-    )
-
+    @log.debug "Finished constructor."
 
   getSynonymURLs: (href) ->
     stringStartsWith = (string, prefix) ->
@@ -185,7 +252,7 @@ class Hypothesis extends Annotator
     stringEndsWith = (string, suffix) ->
       suffix is string.substr string.length - suffix.length
 
-    @log.info "Looking for synonym URLs for '" + href + "'..."
+    @log.debug "Looking for synonym URLs for '" + href + "'..."
     results = []
     if stringStartsWith href, "http://elife.elifesciences.org/content"
       if stringEndsWith href, ".full-text.pdf"
@@ -204,7 +271,8 @@ class Hypothesis extends Annotator
         results.push (href.substr 0, href.length - 4) + "/"
       else
         results.push (href.substr 0, href.length - 1) + ".pdf"
-        
+
+    results.push "fake uri"     
     return results
 
   _setupWrapper: ->
@@ -257,11 +325,6 @@ class Hypothesis extends Annotator
       if @dragging then @provider.notify method: 'dragFrame', params: event.screenX
 
     this
-
-  # Override things not used in the angular version.
-  _setupDynamicStyle: -> this
-  _setupViewer: -> this
-  _setupEditor: -> this
 
   # Do nothing in the app frame, let the host handle it.
   setupAnnotation: (annotation) -> annotation
@@ -345,30 +408,7 @@ class Hypothesis extends Annotator
       $rootScope.$digest()
 
   serviceDiscovery: (options) =>
-    $location = @element.injector().get '$location'
-    $rootScope = @element.injector().get '$rootScope'
-
     angular.extend @options, Store: options
-
-    # Get the location of the annotated document
-    @provider.call
-      method: 'getHref'
-      success: (href) =>
-        options = angular.extend {}, (@options.Store or {}),
-          annotationData:
-            uri: href
-          loadFromSearch:
-            limit: 1000
-            uri: href
-        this.addPlugin 'Store', options
-        this.patch_store this.plugins.Store
-        @log.info "Loaded annotions for '" + href + "'."
-        for href in this.getSynonymURLs href
-          @log.info "Also loading annotations for: " + href
-          this.plugins.Store._apiRequest 'search', uri: href, (data) =>
-            @log.info "Found " + data.total + " annotations here.."
-            this.plugins.Store._onLoadAnnotationsFromSearch data
-
 
 class DraftProvider
   drafts: []

@@ -21,10 +21,17 @@ class App
     $compile, $element, $http, $location, $scope, $timeout
     annotator, drafts, flash
   ) ->
-    annotator.init.done =>
-      this.realInit $compile, $element, $http, $location, $scope, $timeout,
-        annotator, drafts, flash
-
+    annotator.init.createSubTask
+      name: "Create APP"
+      deps: [
+        "panel channel",  # We are using provider
+        "plugin Heatmap", # We are talking to headmap
+        "plugin Store"    # We will use this to start loading the annotations
+      ]
+      code: (task) =>
+        this.realInit $compile, $element, $http, $location, $scope, $timeout,
+          annotator, drafts, flash
+        task.ready()
 
   realInit: (
     $compile, $element, $http, $location, $scope, $timeout,
@@ -151,7 +158,7 @@ class App
             token: newValue
         else
           plugins.Auth.setToken(newValue)
-        plugins.Auth.withToken plugins.Permissions._setAuthFromToken
+        plugins.Permissions._setAuthFromToken newValue
       else
         plugins.Permissions.setUser(null)
         delete plugins.Auth
@@ -162,7 +169,17 @@ class App
         annotations = annotator.plugins.Store.annotations
         annotator.plugins.Store.annotations = []
         annotator.deleteAnnotation a for a in annotations
-        annotator.plugins.Store.pluginInit()
+
+        # This is the reference URI
+        href = annotator.plugins.Store.options.annotationData.uri
+
+        # Look up synsnyms
+        extraURIs = annotator.getSynonymURLs href
+
+        # Let's start a loading process
+        annotator.plugins.Store.startLoading "token changed", extraURIs
+
+        annotator.tasks.schedule()
         dynamicBucket = true
 
     $scope.$watch 'frame.visible', (newValue) ->
