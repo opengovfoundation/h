@@ -53,6 +53,9 @@ class Hypothesis extends Annotator
   this.$inject = ['$document', '$location', '$rootScope', '$route', 'drafts']
   constructor: ($document, $location, $rootScope, $route, drafts) ->
     super ($document.find 'body')
+    #Do not save quote, ranges
+    @serialize.blacklist.push 'quote'
+    @serialize.blacklist.push 'ranges'
 
     # Load plugins
     for own name, opts of @options

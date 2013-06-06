@@ -1,12 +1,12 @@
 /*
-** Annotator 1.2.6-dev-3342e40
+** Annotator 1.2.6-dev-2a0c3d5
 ** https://github.com/okfn/annotator/
 **
 ** Copyright 2012 Aron Carroll, Rufus Pollock, and Nick Stenning.
 ** Dual licensed under the MIT and GPLv3 licenses.
 ** https://github.com/okfn/annotator/blob/master/LICENSE
 **
-** Built at: 2013-05-28 21:55:35Z
+** Built at: 2013-06-06 12:50:42Z
 */
 
 
@@ -248,16 +248,8 @@
     };
 
     Store.prototype._dataFor = function(annotation) {
-      var data, highlights;
-
-      highlights = annotation.highlights;
-      delete annotation.highlights;
       $.extend(annotation, this.options.annotationData);
-      data = JSON.stringify(annotation);
-      if (highlights) {
-        annotation.highlights = highlights;
-      }
-      return data;
+      return this.annotator.stringify(annotation);
     };
 
     Store.prototype._onError = function(xhr) {

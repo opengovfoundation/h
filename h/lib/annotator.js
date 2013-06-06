@@ -1,12 +1,12 @@
 /*
-** Annotator 1.2.6-dev-3342e40
+** Annotator 1.2.6-dev-2a0c3d5
 ** https://github.com/okfn/annotator/
 **
 ** Copyright 2012 Aron Carroll, Rufus Pollock, and Nick Stenning.
 ** Dual licensed under the MIT and GPLv3 licenses.
 ** https://github.com/okfn/annotator/blob/master/LICENSE
 **
-** Built at: 2013-05-28 21:55:30Z
+** Built at: 2013-06-06 12:55:46Z
 */
 
 
@@ -15,7 +15,8 @@
     __slice = [].slice,
     __hasProp = {}.hasOwnProperty,
     __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; },
-    __bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; };
+    __bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; },
+    __indexOf = [].indexOf || function(item) { for (var i = 0, l = this.length; i < l; i++) { if (i in this && this[i] === item) return i; } return -1; };
 
   simpleXPathJQuery = function(relativeRoot) {
     var jq;
@@ -836,6 +837,12 @@
 
     Annotator.prototype.viewerHideTimer = null;
 
+    Annotator.prototype.serialize = {
+      type: 'blacklist',
+      blacklist: ['highlights'],
+      whitelist: []
+    };
+
     function Annotator(element, options) {
       this.onDeleteAnnotation = __bind(this.onDeleteAnnotation, this);
       this.onEditAnnotation = __bind(this.onEditAnnotation, this);
@@ -850,7 +857,8 @@
       this.onEditorSubmit = __bind(this.onEditorSubmit, this);
       this.onEditorHide = __bind(this.onEditorHide, this);
       this.showEditor = __bind(this.showEditor, this);
-      this.getHref = __bind(this.getHref, this);      Annotator.__super__.constructor.apply(this, arguments);
+      this.getHref = __bind(this.getHref, this);
+      this.stringify = __bind(this.stringify, this);      Annotator.__super__.constructor.apply(this, arguments);
       this.plugins = {};
       if (!Annotator.supported()) {
         return this;
@@ -875,6 +883,33 @@
       this.domMatcher = new DomTextMatcher(this.domMapper);
       this.domMapper.setRootNode(this.wrapper[0]);
       return this;
+    };
+
+    Annotator.prototype.stringify = function(annotation) {
+      var filtered, key, val;
+
+      if (this.serialize.type === 'blacklist') {
+        filtered = new Object();
+        for (key in annotation) {
+          val = annotation[key];
+          if (__indexOf.call(this.serialize.blacklist, key) < 0) {
+            filtered[key] = val;
+          }
+        }
+        return JSON.stringify(filtered);
+      }
+      if (this.serialize.type === 'whitelist') {
+        filtered = new Object();
+        for (key in annotation) {
+          val = annotation[key];
+          if (__indexOf.call(this.serialize.whitelist, key) >= 0) {
+            filtered[key] = val;
+          }
+        }
+        return JSON.stringify(filtered);
+      }
+      console.warn("Warning! Invalid @serialize.type");
+      return JSON.stringify(annotation);
     };
 
     Annotator.prototype._scan = function() {
