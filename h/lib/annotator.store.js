@@ -1,12 +1,12 @@
 /*
-** Annotator 1.2.6-dev-ba1e0b2
+** Annotator 1.2.6-dev-610ad8e
 ** https://github.com/okfn/annotator/
 **
 ** Copyright 2012 Aron Carroll, Rufus Pollock, and Nick Stenning.
 ** Dual licensed under the MIT and GPLv3 licenses.
 ** https://github.com/okfn/annotator/blob/master/LICENSE
 **
-** Built at: 2013-06-05 21:53:23Z
+** Built at: 2013-06-05 22:37:48Z
 */
 
 
@@ -48,7 +48,7 @@
 
       Store.__super__.constructor.apply(this, arguments);
       this.annotations = [];
-      this.loadGen = this.initTaskInfo = {
+      this.initTaskInfo = {
         code: function(task) {
           if (!Annotator.supported()) {
             task.failed("Annotator is not supported.");
@@ -196,8 +196,10 @@
       if (data == null) {
         data = [];
       }
-      this.annotations = this.annotations.concat(data);
-      this.annotator.loadAnnotations(data.slice());
+      if (data.length) {
+        this.annotations = this.annotations.concat(data);
+        this.annotator.loadAnnotations(data.slice());
+      }
       if (((_ref = this.pendingLoading) != null ? _ref.state() : void 0) === "pending") {
         this.pendingRequests -= 1;
         if (!this.pendingRequests) {

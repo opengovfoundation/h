@@ -1,12 +1,12 @@
 /*
-** Annotator 1.2.6-dev-ba1e0b2
+** Annotator 1.2.6-dev-2f80adb
 ** https://github.com/okfn/annotator/
 **
 ** Copyright 2012 Aron Carroll, Rufus Pollock, and Nick Stenning.
 ** Dual licensed under the MIT and GPLv3 licenses.
 ** https://github.com/okfn/annotator/blob/master/LICENSE
 **
-** Built at: 2013-06-05 21:56:35Z
+** Built at: 2013-06-06 08:07:31Z
 */
 
 
@@ -2381,6 +2381,7 @@
       this.name = info.name;
       this.todo = info.code;
       this.count = 0;
+      this.composite = info.composite;
     }
 
     _TaskGen.prototype.create = function(info, useDefaultProgress) {
@@ -2390,13 +2391,20 @@
         useDefaultProgress = true;
       }
       this.count += 1;
+      if (info == null) {
+        info = {};
+      }
       instanceInfo = {
         name: this.name + " #" + this.count + ": " + info.instanceName,
         code: this.todo,
         deps: info.deps,
         data: info.data
       };
-      return this.manager.create(instanceInfo, useDefaultProgress);
+      if (this.composite) {
+        return this.manager.createComposite(instanceInfo);
+      } else {
+        return this.manager.create(instanceInfo, useDefaultProgress);
+      }
     };
 
     return _TaskGen;
@@ -2425,6 +2433,7 @@
         name: info.name + "__init",
         code: function(task) {}
       });
+      this.lastSubTask = this.trigger;
     }
 
     _CompositeTask.prototype._finished = function() {
@@ -2508,6 +2517,7 @@
         }
         return _this.dfd.notify(report);
       });
+      this.lastSubTask = task;
       return task;
     };
 
@@ -2898,6 +2908,23 @@
       this.tasks = new TaskManager(myName);
       this.tasks.addDefaultProgress(function(info) {
         return _this.defaultNotify(info);
+      });
+      this.loadListTaskGen = this.tasks.createGenerator({
+        name: "anchoring annotation list",
+        composite: true
+      });
+      this.loadBatchTaskGen = this.tasks.createGenerator({
+        name: "anchoring annotation batch",
+        code: function(task, data) {
+          var n, _k, _len2, _ref6;
+
+          _ref6 = data.annotations;
+          for (_k = 0, _len2 = _ref6.length; _k < _len2; _k++) {
+            n = _ref6[_k];
+            _this.setupAnnotation(n);
+          }
+          return task.ready();
+        }
       });
       if (!this.options.noInit) {
         if (this.options.asyncInit) {
@@ -3494,35 +3521,44 @@
     };
 
     Annotator.prototype.loadAnnotations = function(annotations) {
-      var clone, loader,
+      var annBatch, batchTask, from, info, to, _ref3,
         _this = this;
 
       if (annotations == null) {
         annotations = [];
       }
-      loader = function(annList) {
-        var n, now, _k, _len2;
-
-        if (annList == null) {
-          annList = [];
-        }
-        now = annList.splice(0, 10);
-        for (_k = 0, _len2 = now.length; _k < _len2; _k++) {
-          n = now[_k];
-          _this.setupAnnotation(n);
-        }
-        if (annList.length > 0) {
-          return setTimeout((function() {
-            return loader(annList);
-          }), 10);
-        } else {
-          return _this.publish('annotationsLoaded', [clone]);
-        }
-      };
-      clone = annotations.slice();
-      if (annotations.length) {
-        loader(annotations);
+      if (!annotations.length) {
+        return;
       }
+      if (!this.pendingLoad) {
+        this.pendingLoad = this.loadListTaskGen.create({
+          instanceName: ""
+        });
+        this.pendingLoadList = [];
+        this.pendingLoad.done(function() {
+          _this.publish('annotationsLoaded', [_this.pendingLoadList]);
+          return delete _this.pendingLoad;
+        });
+      }
+      this.pendingLoadList = this.pendingLoadList.concat(annotations);
+      to = 0;
+      while (annotations.length) {
+        annBatch = annotations.splice(0, 10);
+        _ref3 = [to + 1, to + annBatch.length], from = _ref3[0], to = _ref3[1];
+        info = {
+          instanceName: from + "-" + to,
+          data: {
+            annotations: annBatch
+          }
+        };
+        batchTask = this.loadBatchTaskGen.create(info, false);
+        this.pendingLoad.addSubTask({
+          deps: this.pendingLoad.lastSubTask,
+          weight: annBatch.length,
+          task: batchTask
+        });
+      }
+      this.tasks.schedule();
       return this;
     };
 
