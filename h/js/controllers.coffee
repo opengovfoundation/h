@@ -91,13 +91,17 @@ class App
       $scope.sheet.collapsed = false
       $scope.sheet.tab = 'oauth'
 
+      left = Math.round((screen.width - 720) / 4)
+      top = Math.round((screen.height - 360) / 3)
+      dims = "width=720,height=360,left=#{left},top=#{top}"
+
       channel = Channel.build
         origin: 'https://localhost:5000'
         scope: 'annotator:auth'
         window: $window.open(
           'https://localhost:5000/oauth/login',
           'Annotator_Auth',
-          'dependent=yes,dialog=yes'
+          "dependent,dialog,resizable,scrollbars,status,#{dims}"
         )
       .bind 'success', (ctx, result) ->
         $scope.$apply ->
