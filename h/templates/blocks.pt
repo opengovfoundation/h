@@ -145,11 +145,14 @@
       <!-- / Activate -->
 
       <!-- OAuth -->
-      <div data-title="Authorizing"
+      <div data-title="Complete authorization"
            data-value="oauth"
            class="tab-pane"
            name="oauth">
-        Waiting for authentication.
+        <p>Waiting for authentication.
+        <p>Please follow the instructions in the popup window if you wish to
+          annotate this page.
+        <p>When you have succeeded you will see your username above right.
       </div>
       <!-- / OAuth -->
     </metal:main>
