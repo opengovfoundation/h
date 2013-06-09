@@ -20,8 +20,7 @@
 
       <div class="inner">
         <a class="pull-right" href=""
-           ng-click="sheet.collapsed = false;
-                     sheet.tab = 'login';"
+           ng-click="login()"
            ng-if="!auth.persona && sheet.collapsed">Sign in</a>
         <div class="pull-right user-picker"
              ng-if="auth.persona"
@@ -41,7 +40,7 @@
               ng-click="sheet.collapsed = true"></span>
 
         <div data-resettable="true"
-             data-tab-reveal="['forgot','activate']"
+             data-tab-reveal="['forgot','activate','oauth']"
              ng-model="sheet.tab"
              class="form-vertical tabbable">
           <div data-authentication="auth"

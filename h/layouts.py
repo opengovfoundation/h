@@ -40,6 +40,11 @@ class AppLayout(BaseLayout):
     requirements = (('app', None),)
 
 
+@layout_config(name='auth', template='h:templates/base.pt')
+class AuthLayout(BaseLayout):
+    requirements = (('auth', None),)
+
+
 @layout_config(name='sidebar', template='h:templates/base.pt')
 class SidebarLayout(AppLayout):
     requirements = (('app', None), ('sidebar', None))

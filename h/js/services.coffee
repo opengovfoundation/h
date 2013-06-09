@@ -247,9 +247,9 @@ class Hypothesis extends Annotator
   showEditor: (annotation) =>
     this.show()
     @element.injector().invoke [
-      '$location', '$rootScope', '$route'
-      ($location, $rootScope, $route) =>
-        unless this.plugins.Auth? and this.plugins.Auth.haveValidToken()
+      '$location', '$rootScope', '$route', 'authentication'
+      ($location, $rootScope, $route, authentication) =>
+        unless authentication.persona?
           $route.current.locals.$scope.$apply ->
             $route.current.locals.$scope.$emit 'showAuth', true
           @provider.notify method: 'onEditorHide'
@@ -319,7 +319,14 @@ class Hypothesis extends Annotator
     $location = @element.injector().get '$location'
     $rootScope = @element.injector().get '$rootScope'
 
-    angular.extend @options, Store: options
+    angular.extend @options, Store: options,
+      Store:
+        prefix: 'https://alpha-api.app.net/stream/0'
+        urls:
+          create: '/posts'
+          read: '/posts/:id'
+          destroy: '/posts/:id'
+          search: '/channels/18425/messages?include_annotations=1'
 
     # Get the location of the annotated document
     @provider.call

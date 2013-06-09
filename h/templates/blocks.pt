@@ -143,6 +143,15 @@
 
       </form>
       <!-- / Activate -->
+
+      <!-- OAuth -->
+      <div data-title="Authorizing"
+           data-value="oauth"
+           class="tab-pane"
+           name="oauth">
+        Waiting for authentication.
+      </div>
+      <!-- / OAuth -->
     </metal:main>
   </body>
 </html>

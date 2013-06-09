@@ -7,11 +7,11 @@ class App
       tab: null
 
   this.$inject = [
-    '$compile', '$element', '$http', '$location', '$scope', '$timeout',
+    '$compile', '$element', '$http', '$location', '$scope', '$timeout', '$window'
     'annotator', 'authentication', 'drafts', 'flash'
   ]
   constructor: (
-    $compile, $element, $http, $location, $scope, $timeout
+    $compile, $element, $http, $location, $scope, $timeout, $window
     annotator, authentication, drafts, flash
   ) ->
     {plugins, provider} = annotator
@@ -87,66 +87,24 @@ class App
             annotator.showViewer heatmap.buckets[bucket]
             $scope.$digest()
 
-    $scope.submit = (form) ->
-      return unless form.$valid
-      params = for name, control of form when control.$modelValue?
-        [name, control.$modelValue]
-      params.push ['__formid__', form.$name]
-      data = (((p.map encodeURIComponent).join '=') for p in params).join '&'
+    $scope.login = ->
+      $scope.sheet.collapsed = false
+      $scope.sheet.tab = 'oauth'
 
-      $http.post '', data,
-        headers:
-          'Content-Type': 'application/x-www-form-urlencoded'
-        withCredentials: true
-      .success (data) =>
-        if data.model? then angular.extend $scope, data.model
-        if data.flash? then flash q, msgs for q, msgs of data.flash
-        if data.status is 'failure' then flash 'error', data.reason
-        if data.status is 'okay' then $scope.sheet.collapsed = true
+      channel = Channel.build
+        origin: 'https://localhost:5000'
+        scope: 'annotator:auth'
+        window: $window.open(
+          'https://localhost:5000/oauth/login',
+          'Annotator_Auth',
+          'dependent=yes,dialog=yes'
+        )
+      .bind 'success', (ctx, result) ->
+        $scope.$apply ->
+          angular.extend authentication, result
+          $scope.sheet.collapsed = true
 
-    $scope.$watch 'sheet.collapsed', (newValue) ->
-      $scope.sheet.tab = if newValue then null else 'login'
-
-    $scope.$watch 'sheet.tab', (tab) ->
-      $timeout =>
-        $element
-        .find('form')
-        .filter(-> this.name is tab)
-        .find('input')
-        .filter(-> this.type isnt 'hidden')
-        .first()
-        .focus()
-      , 10
-
-    $scope.$watch 'auth.personas', (newValue, oldValue) =>
-      unless newValue?.length
-        authentication.persona = null
-        authentication.token = null
-
-    $scope.$watch 'auth.persona', (newValue, oldValue) =>
-      if oldValue? and not newValue?
-        # TODO: better knowledge of routes
-        authentication.$logout => $scope.$broadcast '$reset'
-      else if newValue?
-        $scope.sheet.collapsed = true
-
-    $scope.$watch 'auth.token', (newValue, oldValue) =>
-      if plugins.Auth?
-        plugins.Auth.token = newValue
-        plugins.Auth.updateHeaders()
-
-      if newValue?
-        if not plugins.Auth?
-          annotator.addPlugin 'Auth',
-            tokenUrl: $scope.tokenUrl
-            token: newValue
-        else
-          plugins.Auth.setToken(newValue)
-        plugins.Auth.withToken plugins.Permissions._setAuthFromToken
-      else
-        plugins.Permissions.setUser(null)
-        delete plugins.Auth
-
+    $scope.reload = ->
       if annotator.plugins.Store?
         $scope.$root.annotations = []
         annotator.threading.thread []
@@ -176,6 +134,81 @@ class App
           annotator.clickAdder()
         , 500
 
+    $scope.submit = (form) ->
+      return unless form.$valid
+      params = for name, control of form when control.$modelValue?
+        [name, control.$modelValue]
+      params.push ['__formid__', form.$name]
+      data = (((p.map encodeURIComponent).join '=') for p in params).join '&'
+
+      $http.post '', data,
+        headers:
+          'Content-Type': 'application/x-www-form-urlencoded'
+        withCredentials: true
+      .success (data) =>
+        if data.model? then angular.extend $scope, data.model
+        if data.flash? then flash q, msgs for q, msgs of data.flash
+        if data.status is 'failure' then flash 'error', data.reason
+        if data.status is 'okay' then $scope.sheet.collapsed = true
+
+    $scope.$watch 'sheet.tab', (tab) ->
+      $timeout =>
+        $element
+        .find('form')
+        .filter(-> this.name is tab)
+        .find('input')
+        .filter(-> this.type isnt 'hidden')
+        .first()
+        .focus()
+      , 10
+
+    $scope.$watch 'auth.access_token', (newValue, oldValue) =>
+      current = annotator.element.data('annotator:headers') or {}
+      if newValue
+        updated = angular.extend current, Authorization: "Bearer #{newValue}"
+      else
+        updated = current
+        delete updated['Authorization']
+      annotator.element.data('annotator:headers', updated)
+      $scope.reload()
+
+    $scope.$watch 'auth.personas', (newValue, oldValue) =>
+      unless newValue?.length
+        authentication.persona = null
+        authentication.token = null
+
+    $scope.$watch 'auth.persona', (newValue, oldValue) =>
+      if newValue
+        user = "acct:#{newValue.username}@#{newValue.provider}"
+      else
+        user = null
+      plugins.Permissions?.setUser(user)
+
+      if oldValue? and not newValue?
+        # TODO: better knowledge of routes
+        authentication.$logout => $scope.$broadcast '$reset'
+      else if newValue?
+        $scope.sheet.collapsed = true
+
+    $scope.$watch 'auth.token', (newValue, oldValue) =>
+      if plugins.Auth?
+        plugins.Auth.token = newValue
+        plugins.Auth.updateHeaders()
+
+      if newValue?
+        if not plugins.Auth?
+          annotator.addPlugin 'Auth',
+            tokenUrl: $scope.tokenUrl
+            token: newValue
+        else
+          plugins.Auth.setToken(newValue)
+        plugins.Auth.withToken plugins.Permissions._setAuthFromToken
+      else
+        plugins.Permissions.setUser(null)
+        delete plugins.Auth
+
+      $scope.reload()
+
     $scope.$watch 'frame.visible', (newValue) ->
       if newValue
         annotator.show()
@@ -187,9 +220,6 @@ class App
         annotator.provider.notify method: 'setActiveHighlights'
         annotator.provider.notify method: 'hideFrame'
         $element.find('.topbar').find('.tri').attr('draggable', false)
-
-    $scope.$watch 'sheet.collapsed', (newValue) ->
-      $scope.sheet.tab = if newValue then null else 'login'
 
     $scope.$watch 'sheet.tab', (tab) ->
       $timeout =>
@@ -228,8 +258,14 @@ class App
 
 
 class Annotation
-  this.$inject = ['$element', '$location', '$scope', 'annotator', 'drafts', '$timeout']
-  constructor: ($element, $location, $scope, annotator, drafts, $timeout) ->
+  this.$inject = [
+    '$element', '$location', '$scope', '$timeout',
+    'annotator', 'authentication', 'drafts'
+  ]
+  constructor: (
+    $element, $location, $scope, $timeout,
+    annotator, authentication, drafts
+  ) ->
     threading = annotator.threading
     $scope.action = 'create'
 
@@ -263,7 +299,7 @@ class Annotation
           annotator.updateAnnotation annotation
 
     $scope.reply = ->
-      unless annotator.plugins.Auth? and annotator.plugins.Auth.haveValidToken()
+      unless authentication.persona?
         $scope.$emit 'showAuth', true
         return
 

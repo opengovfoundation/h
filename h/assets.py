@@ -86,8 +86,8 @@ annotator_permissions = Uglify(
     output='lib/annotator.permissions.min.js'
 )
 annotator_store = Uglify(
-    'lib/annotator.store.js',
-    output='lib/annotator.store.min.js'
+    Coffee('js/plugin/appnetstore.coffee', output='lib/annotator.appnet.js'),
+    output='lib/annotator.appnet.min.js',
 )
 annotator_document = Uglify(
     'lib/annotator.document.js',
@@ -184,6 +184,10 @@ app = Bundle(
         ],
         output='js/app.min.js'
     ),
+)
+
+auth = Bundle(
+    jschannel,
 )
 
 display = Bundle(
