@@ -133,14 +133,19 @@ class Hypothesis extends Annotator
           )
 
           .bind('setLoggerStartTime', (ctx, timestamp) =>
-            @log.debug "Setting logging start time."
+            @log.trace "Setting logging start time."
             window.XLoggerStartTime = timestamp
-            @log.debug "Now we have consistent timing."
+            @log.trace "Now we have consistent timing."
           )
 
           .bind('publishAnnotationsAnchored', (ctx) =>
             this.publish('annotationsAnchored')                
           )
+
+          .bind('initProgress', (ctx, status) =>
+            delete status.task
+            @hostInit.dfd.notify status
+          ) 
 
     @init.createSubTask
       name: "href"
@@ -173,6 +178,15 @@ class Hypothesis extends Annotator
         this.patch_store this.plugins.Store
         task.ready()
 
+    # Create a "shadow" task for the initial loading
+    @firstLoad = @init.createSubTask
+      name: "wait for load"
+      code: ->
+
+    # Create a "shadow" task for things happening on the host side
+    @hostInit = @init.createSubTask
+      name: "host init"
+      code: ->
 
     # Load plugins
     # (This will create the appropriate init tasks, too.)

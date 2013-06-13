@@ -18,7 +18,7 @@ class Annotator.Host extends Annotator
 
   constructor: (element, options) ->
     @log ?= getXLogger "Annotator.Host"
-    @log.setLevel XLOG_LEVEL.DEBUG
+#    @log.setLevel XLOG_LEVEL.DEBUG
     @log.debug "Started constructor."
 
     options.noScan = true
@@ -27,7 +27,7 @@ class Annotator.Host extends Annotator
 
     window.wtfhost = this
 
-    @tasklog.setLevel XLOG_LEVEL.DEBUG
+#    @tasklog.setLevel XLOG_LEVEL.DEBUG
 
     this.initAsync()
 
@@ -275,7 +275,10 @@ class Annotator.Host extends Annotator
       # Scanning requires a configured wrapper
       deps: ["wrapper", "iframe"]
     scan = @_scanGen.create info, false
-    @init.addSubTask weight: 50, task: scan        
+    @init.addSubTask weight: 50, task: scan
+
+    @init.progress (info) =>
+      @panel?.notify method: 'initProgress', params: info
 
   _setupWrapper: ->
     @wrapper = @element

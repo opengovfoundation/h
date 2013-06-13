@@ -177,7 +177,14 @@ class App
         extraURIs = annotator.getSynonymURLs href
 
         # Let's start a loading process
-        annotator.plugins.Store.startLoading "token changed", extraURIs
+        load = annotator.plugins.Store.startLoading "token changed", extraURIs
+
+        # When load is ready, close the "shadow" task
+        if annotator.firstLoad?
+          load.done =>
+            annotator.firstLoad.dfd.ready()
+            delete annotator.firstLoad
+        
 
         annotator.tasks.schedule()
         dynamicBucket = true
