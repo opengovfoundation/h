@@ -114,8 +114,16 @@ class Annotator.Host extends Annotator
   defineAsyncInitTasks: ->
     super
 
+    # We add these extra dependencies so that these time-consuming
+    # tasks are delayed, and the sidebar (with the progress info)
+    # is shown ASAP
+    @tasks.addDeps "dynamic CSS styles", "panel channel"
+    @tasks.addDeps "adder", "panel channel"
+    @tasks.addDeps "viewer & editor", "panel channel"
+
     @init.createSubTask
       name: "iframe"
+      deps: ["wrapper"] # We are appending the iframe element to the wrapper
       code: (task) =>
         if document.baseURI and window.PDFView?
           # XXX: Hack around PDF.js resource: origin. Bug in jschannel?
@@ -272,14 +280,27 @@ class Annotator.Host extends Annotator
     # Create a task for scanning the doc
     info =
       instanceName: "Initial scan"
-      # Scanning requires a configured wrapper
-      deps: ["wrapper", "iframe"]
+      deps: [
+        "wrapper", # Scanning requires a configured wrapper
+        "adder",   # d-t-m does not like new elements, so wait for adder 
+        "panel channel" # Don't scan before we have a working status channel
+      ]
     scan = @_scanGen.create info, false
     @init.addSubTask weight: 50, task: scan
 
     # We are sending info about the status of the init task to the sidebar
     @init.progress (info) =>
-      @panel?.notify method: 'initProgress', params: info
+      if @panel? # Do we have a panel connection?
+        # Yes, we can send our stuff there. 
+        @panel.notify method: 'initProgress', params: info
+      else if false
+        # No panel connection yet. Dumping data locally.
+        info ?= { }
+        info.progress ?= 0
+        num = Math.round ( 100 * info.progress )
+        progressText = num.toString() + "%"        # 
+        @tasklog.info info.task._name + ": " + progressText + " - " + info.text
+       
 
     @init.done =>
       @panel?.notify method: 'initDone'

@@ -135,7 +135,7 @@ class Hypothesis extends Annotator
 
           .bind('setLoggerStartTime', (ctx, timestamp) =>
             @log.trace "Setting logging start time."
-            window.XLoggerStartTime = timestamp
+#            window.XLoggerStartTime = timestamp
             @log.trace "Now we have consistent timing."
           )
 
@@ -206,9 +206,9 @@ class Hypothesis extends Annotator
     window.wtfh = this
         
     # We are in an iframe, so the time registered there is invalid. Clearing it.
-    delete window.XLoggerStartTime
+#    delete window.XLoggerStartTime
     @log ?= getXLogger "Hypothesis"
-    @log.setLevel XLOG_LEVEL.DEBUG
+#    @log.setLevel XLOG_LEVEL.DEBUG
     @log.debug "Started constructor."
 
 
@@ -216,7 +216,7 @@ class Hypothesis extends Annotator
       noScan: true
       noInit: true
 
-    @tasklog.setLevel XLOG_LEVEL.DEBUG
+#    @tasklog.setLevel XLOG_LEVEL.DEBUG
 
     this.initAsync() 
 
