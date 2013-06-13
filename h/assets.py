@@ -81,6 +81,9 @@ annotator_discovery = Uglify(
 annotator_heatmap = Uglify(
     Coffee('js/plugin/heatmap.coffee', output='js/plugin/heatmap.js')
 )
+annotator_progress = Uglify(
+    Coffee('js/plugin/progress.coffee', output='js/plugin/progress.js')
+)
 annotator_permissions = Uglify(
     'lib/annotator.permissions.js',
     output='lib/annotator.permissions.min.js'
@@ -142,6 +145,7 @@ app = Bundle(
     angular_bootstrap,
     angular_sanitize,
     annotator,
+    annotator_progress,
     annotator_auth,
     annotator_bridge,
     annotator_discovery,

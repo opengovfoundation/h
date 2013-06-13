@@ -6,6 +6,7 @@ class Hypothesis extends Annotator
   options:
     Discovery: {}
     Heatmap: {}
+    Progress: {}
     Permissions:
       ignoreToken: true
       permissions:
@@ -142,6 +143,10 @@ class Hypothesis extends Annotator
             this.publish('annotationsAnchored')                
           )
 
+          .bind('initDone', (ctx) =>
+            @hostInit.dfd.ready()
+          )
+        
           .bind('initProgress', (ctx, status) =>
             delete status.task
             @hostInit.dfd.notify status
@@ -185,6 +190,7 @@ class Hypothesis extends Annotator
 
     # Create a "shadow" task for things happening on the host side
     @hostInit = @init.createSubTask
+      weight: 50
       name: "host init"
       code: ->
 
@@ -237,6 +243,12 @@ class Hypothesis extends Annotator
     # Update the heatmap when the host is updated or annotations are loaded
     bridge = @plugins.Bridge
     heatmap = @plugins.Heatmap
+    progress = @plugins.Progress
+
+    # Keep updating the progress bar with the status of the init task
+    @init.progress (info) =>
+      progress.updateProgress info.text, info.progress
+
     threading = @threading
     updateOn = [
       'hostUpdated'

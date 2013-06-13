@@ -277,8 +277,12 @@ class Annotator.Host extends Annotator
     scan = @_scanGen.create info, false
     @init.addSubTask weight: 50, task: scan
 
+    # We are sending info about the status of the init task to the sidebar
     @init.progress (info) =>
       @panel?.notify method: 'initProgress', params: info
+
+    @init.done =>
+      @panel?.notify method: 'initDone'
 
   _setupWrapper: ->
     @wrapper = @element
