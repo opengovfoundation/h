@@ -48,7 +48,6 @@ class Hypothesis extends Annotator
 
     # This task overrides an upstream task
     @init.createSubTask
-      weight: 1
       name: "viewer & editor"
       code: (task) =>
         # Here as a noop just to make the Permissions plugin happy
@@ -87,7 +86,6 @@ class Hypothesis extends Annotator
         parsed
 
     @init.createSubTask
-      weight: 1
       name: "api channel"
       code: (task) =>
         @api = Channel.build
@@ -104,7 +102,6 @@ class Hypothesis extends Annotator
         )        
 
     @init.createSubTask
-      weight: 1
       name: "panel channel"
       code: (task) =>
         @provider = Channel.build
@@ -139,6 +136,10 @@ class Hypothesis extends Annotator
             @log.debug "Setting logging start time."
             window.XLoggerStartTime = timestamp
             @log.debug "Now we have consistent timing."
+          )
+
+          .bind('publishAnnotationsAnchored', (ctx) =>
+            this.publish('annotationsAnchored')                
           )
 
     @init.createSubTask
@@ -226,6 +227,7 @@ class Hypothesis extends Annotator
     updateOn = [
       'hostUpdated'
       'annotationsLoaded'
+      'annotationsAnchored'
       'annotationCreated'
       'annotationDeleted'
     ]
@@ -272,7 +274,7 @@ class Hypothesis extends Annotator
       else
         results.push (href.substr 0, href.length - 1) + ".pdf"
 
-    results.push "fake uri"     
+#    results.push "fake uri"     
     return results
 
   _setupWrapper: ->

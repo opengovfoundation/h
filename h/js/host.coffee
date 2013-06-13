@@ -18,34 +18,24 @@ class Annotator.Host extends Annotator
 
   constructor: (element, options) ->
     @log ?= getXLogger "Annotator.Host"
+    @log.setLevel XLOG_LEVEL.DEBUG
     @log.debug "Started constructor."
 
     options.noScan = true
+    options.noInit = true
     super
+
+    window.wtfhost = this
+
+    @tasklog.setLevel XLOG_LEVEL.DEBUG
+
+    this.initAsync()
+
+    delete @options.noInit 
     delete @options.noScan
 
     @app = @options.app
     delete @options.app
-
-    # Create the iframe
-    if document.baseURI and window.PDFView?
-      # XXX: Hack around PDF.js resource: origin. Bug in jschannel?
-      hostOrigin = '*'
-    else
-      hostOrigin = window.location.origin
-      # XXX: Hack for missing window.location.origin in FF
-      hostOrigin ?= window.location.protocol + "//" + window.location.host
-
-    @frame = $('<iframe></iframe>')
-    .css(display: 'none')
-    .attr('src', "#{@app}#/?xdm=#{encodeURIComponent(hostOrigin)}")
-    .appendTo(@wrapper)
-    .addClass('annotator-frame annotator-outer annotator-collapsed')
-    .bind 'load', =>
-      @log.info "Sidebar iframe content loaded"
-      this._setupXDM()
-      @panel.notify method: 'setLoggerStartTime', params: window.XLoggerStartTime
-
 
     # Load plugins
     for own name, opts of @options
@@ -53,134 +43,239 @@ class Annotator.Host extends Annotator
         @log.debug "Loading plugin '" + name + "' with options", opts
         this.addPlugin(name, opts)
 
-    # Scan the document text with the DOM Text libraries
-    this.scanDocument "Annotator initialized"
+    # We will use these task generators to set up the tasks for setting up
+    # annotations as we receive them.
+    @setupListTaskGen = @tasks.createGenerator
+      name: "setting up annotation list"
+      composite: true
+
+    @setupBatchTaskGen = @tasks.createGenerator
+      name: "setting up annotation batch"
+      code: (task, data) =>
+        for n in data.annotations
+          this.setupAnnotationReal n
+        task.ready()
+
+    # We need to override the normal setupAnnotation call, so we save it
+    @setupAnnotationReal = @setupAnnotation
+
+    # We receive setupAnnotation calls from the bridge plugin.
+    # However, we don't know whether or not we can act on these requests
+    # right away, because it's possible the that scan phase has not yet
+    # finished. Therefore, we create tasks out of them, to be executed
+    # when the results of the scan are ready.
+    @setupAnnotation = (annotation) =>
+      # If we don't have a pending setup task, create one
+      unless @pendingSetup
+        @pendingSetup = @setupListTaskGen.create
+          instanceName: ""
+          deps: [
+            "scan document #1: Initial scan", # We can't anchore without data
+            "panel channel" # we need to tell the sidebar when it's ready
+          ]
+        @pendingSetupCount = 0
+
+        # Do this when this newly created setup task is finished
+        @pendingSetup.done =>
+          @panel.notify method: 'publishAnnotationsAnchored'
+          delete @pendingSetup
+
+        info =
+          instanceName: "1 - "
+          data: annotations: []
+
+        @pendingSetup.addSubTask
+          deps: @pendingSetup.lastSubTask
+          task: @setupBatchTaskGen.create info, false
+
+      @pendingSetupCount += 1
+
+      # Fetch the last batch
+      batch = @pendingSetup.lastSubTask
+
+      # Check whether we can put this incoming annotation into this batch
+      if batch.started or batch._data.annotations.length is 10
+        # The current batch is full, we need a new batch
+        info =
+          instanceName: @pendingSetupCount + "-"
+          data: annotations: []
+        batch = @setupBatchTaskGen.create info, false
+        @pendingSetup.addSubTask
+          deps: @pendingSetup.lastSubTask
+          task: batch
+
+      # Add the new annotation to the chosen batch
+      batch._data.annotations.push annotation
+
+      @tasks.schedule()
 
     @log.debug "Finished constructor."
 
+  defineAsyncInitTasks: ->
+    super
 
-  _setupXDM: ->
-    # Set up the bridge plugin, which bridges the main annotation methods
-    # between the host page and the panel widget.
-    whitelist = ['diffHTML', 'quote', 'ranges', 'target', 'id']
-    this.addPlugin 'Bridge',
-      origin: '*'
-      window: @frame[0].contentWindow
-      formatter: (annotation) =>
-        formatted = {}
-        for k, v of annotation when k in whitelist
-          formatted[k] = v
-        formatted
-      parser: (annotation) =>
-        parsed = {}
-        for k, v of annotation when k in whitelist
-          parsed[k] = v
-        parsed
+    @init.createSubTask
+      name: "iframe"
+      code: (task) =>
+        if document.baseURI and window.PDFView?
+          # XXX: Hack around PDF.js resource: origin. Bug in jschannel?
+          hostOrigin = '*'
+        else
+          hostOrigin = window.location.origin
+          # XXX: Hack for missing window.location.origin in FF
+          hostOrigin ?= window.location.protocol + "//" + window.location.host
 
-    # Build a channel for the publish API
-    @api = Channel.build
-      origin: '*'
-      scope: 'annotator:api'
-      window: @frame[0].contentWindow
+        @frame = $('<iframe></iframe>')
+        .css(display: 'none')
+        .attr('src', "#{@app}#/?xdm=#{encodeURIComponent(hostOrigin)}")
+        .appendTo(@wrapper)
+        .addClass('annotator-frame annotator-outer annotator-collapsed')
+        .bind 'load', =>
+          task.ready()      
 
-    # Build a channel for the panel UI
-    @panel = Channel.build
-      origin: '*'
-      scope: 'annotator:panel'
-      window: @frame[0].contentWindow
-      onReady: =>
-        @frame.css('display', '')
+    @init.createSubTask
+      name: "set time in SideBar"
+      deps: ["panel channel"] # We need the channel to talk to sidebar
+      code: (task) =>    
+        @panel.notify method: 'setLoggerStartTime', params: window.XLoggerStartTime
+        task.ready()
+        
+    @init.createSubTask
+      name: "load bridge plugin"
+      deps: ["iframe"]  # We need this to configure the plugin
+      code: (task) =>
+        # Set up the bridge plugin, which bridges the main annotation methods
+        # between the host page and the panel widget.
+        whitelist = ['diffHTML', 'quote', 'ranges', 'target', 'id']
+        this.addPlugin 'Bridge',
+          origin: '*'
+          window: @frame[0].contentWindow
+          formatter: (annotation) =>
+            formatted = {}
+            for k, v of annotation when k in whitelist
+              formatted[k] = v
+            formatted
+          parser: (annotation) =>
+            parsed = {}
+            for k, v of annotation when k in whitelist
+              parsed[k] = v
+            parsed
+        task.ready()
 
-        @log.debug "We have the panel UI channel; setting up bindings"
-        @panel
+    @init.createSubTask
+      name: "api channel"
+      deps: ["iframe"] # We need this to build the channel
+      code: (task) =>
+        # Build a channel for the publish API
+        @api = Channel.build
+          origin: '*'
+          scope: 'annotator:api'
+          window: @frame[0].contentWindow
+          onReady: =>
+            task.ready()
 
-        .bind('onEditorHide', this.onEditorHide)
-        .bind('onEditorSubmit', this.onEditorSubmit)
+    @init.createSubTask
+      name: "panel channel"
+      deps: ["iframe"] # We need this to build the channel
+      code: (task) =>
+        # Build a channel for the panel UI
+        @panel = Channel.build
+          origin: '*'
+          scope: 'annotator:panel'
+          window: @frame[0].contentWindow
+          onReady: =>
+                
+            @frame.css('display', '')
 
-        .bind('showFrame', =>
-          @frame.css 'margin-left': "#{-1 * @frame.width()}px"
-          @frame.removeClass 'annotator-no-transition'
-          @frame.removeClass 'annotator-collapsed'
-        )
+            @panel
 
-        .bind('hideFrame', =>
-          @frame.css 'margin-left': ''
-          @frame.removeClass 'annotator-no-transition'
-          @frame.addClass 'annotator-collapsed'
-        )
+            .bind('onEditorHide', this.onEditorHide)
+            .bind('onEditorSubmit', this.onEditorSubmit)
 
-        .bind('dragFrame', (ctx, screenX) =>
-          if screenX > 0
-            if @drag.last?
-              @drag.delta += screenX - @drag.last
-            @drag.last = screenX
-          unless @drag.tick
-            @drag.tick = true
-            window.requestAnimationFrame this._dragRefresh
-        )
+            .bind('showFrame', =>
+              @frame.css 'margin-left': "#{-1 * @frame.width()}px"
+              @frame.removeClass 'annotator-no-transition'
+              @frame.removeClass 'annotator-collapsed'
+            )
 
-        .bind('getHighlights', =>
-          highlights: $(@wrapper).find('.annotator-hl')
-          .filter ->
-            this.offsetWidth > 0 || this.offsetHeight > 0
-          .map ->
-            offset: $(this).offset()
-            height: $(this).outerHeight(true)
-            data: $(this).data('annotation').$$tag
-          .get()
-          offset: $(window).scrollTop()
-        )
+            .bind('hideFrame', =>
+              @frame.css 'margin-left': ''
+              @frame.removeClass 'annotator-no-transition'
+              @frame.addClass 'annotator-collapsed'
+            )
 
-        .bind('setActiveHighlights', (ctx, tags=[]) =>
-          @wrapper.find('.annotator-hl')
-          .each ->
-            if $(this).data('annotation').$$tag in tags
-              $(this).addClass('annotator-hl-active')
-            else if not $(this).hasClass('annotator-hl-temporary')
-              $(this).removeClass('annotator-hl-active')
-        )
+            .bind('dragFrame', (ctx, screenX) =>
+              if screenX > 0
+                if @drag.last?
+                  @drag.delta += screenX - @drag.last
+                @drag.last = screenX
+              unless @drag.tick
+                @drag.tick = true
+                window.requestAnimationFrame this._dragRefresh
+            )
 
-        .bind('getHref', => this.getHref())
+            .bind('getHighlights', =>
+              highlights: $(@wrapper).find('.annotator-hl')
+              .filter ->
+                this.offsetWidth > 0 || this.offsetHeight > 0
+              .map ->
+                offset: $(this).offset()
+                height: $(this).outerHeight(true)
+                data: $(this).data('annotation').$$tag
+              .get()
+              offset: $(window).scrollTop()
+            )
 
-        .bind('getMaxBottom', =>
-          sel = '*' + (":not(.annotator-#{x})" for x in [
-            'adder', 'outer', 'notice', 'filter', 'frame'
-          ]).join('')
+            .bind('setActiveHighlights', (ctx, tags=[]) =>
+              @wrapper.find('.annotator-hl')
+              .each ->
+                if $(this).data('annotation').$$tag in tags
+                  $(this).addClass('annotator-hl-active')
+                else if not $(this).hasClass('annotator-hl-temporary')
+                  $(this).removeClass('annotator-hl-active')
+            )
 
-          # use the maximum bottom position in the page
-          all = for el in $(document.body).find(sel)
-            p = $(el).css('position')
-            t = $(el).offset().top
-            z = $(el).css('z-index')
-            if (y = /\d+/.exec($(el).css('top'))?[0])
-              t = Math.min(Number y, t)
-            if (p == 'absolute' or p == 'fixed') and t == 0 and z != 'auto'
-              bottom = $(el).outerHeight(false)
-              # but don't go larger than 80, because this isn't bulletproof
-              if bottom > 80 then 0 else bottom
-            else
-              0
-          Math.max.apply(Math, all)
-        )
+            .bind('getHref', => this.getHref())
 
-        .bind('scrollTop', (ctx, y) =>
-          $('html, body').stop().animate {scrollTop: y}, 600
-        )
+            .bind('getMaxBottom', =>
+              sel = '*' + (":not(.annotator-#{x})" for x in [
+                'adder', 'outer', 'notice', 'filter', 'frame'
+              ]).join('')
 
-        .bind('setDrag', (ctx, drag) =>
-          @drag.enabled = drag
-          @drag.last = null
-        )
+              # use the maximum bottom position in the page
+              all = for el in $(document.body).find(sel)
+                p = $(el).css('position')
+                t = $(el).offset().top
+                z = $(el).css('z-index')
+                if (y = /\d+/.exec($(el).css('top'))?[0])
+                  t = Math.min(Number y, t)
+                if (p == 'absolute' or p == 'fixed') and t == 0 and z != 'auto'
+                  bottom = $(el).outerHeight(false)
+                  # but don't go larger than 80, because this isn't bulletproof
+                  if bottom > 80 then 0 else bottom
+                else
+                  0
+              Math.max.apply(Math, all)
+            )
 
-  scanDocument: (reason = "something happened") =>
-    try
-      @log.info "Analyzing host frame, because " + reason + "..."
-      r = this._scanSync()
-      scanTime = r.time
-      scanTime = -1
-      @log.info "Traversal+scan took " + scanTime + " ms."
-    catch e
-      @log.error e
+            .bind('scrollTop', (ctx, y) =>
+              $('html, body').stop().animate {scrollTop: y}, 600
+            )
+
+            .bind('setDrag', (ctx, drag) =>
+              @drag.enabled = drag
+              @drag.last = null
+            )
+
+            task.ready()
+
+    # Create a task for scanning the doc
+    info =
+      instanceName: "Initial scan"
+      # Scanning requires a configured wrapper
+      deps: ["wrapper", "iframe"]
+    scan = @_scanGen.create info, false
+    @init.addSubTask weight: 50, task: scan        
 
   _setupWrapper: ->
     @wrapper = @element
