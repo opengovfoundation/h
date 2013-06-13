@@ -1,21 +1,21 @@
 /*
-** Annotator 1.2.6-dev-fe8a355
+** Annotator 1.2.6-dev-4c40463
 ** https://github.com/okfn/annotator/
 **
 ** Copyright 2012 Aron Carroll, Rufus Pollock, and Nick Stenning.
 ** Dual licensed under the MIT and GPLv3 licenses.
 ** https://github.com/okfn/annotator/blob/master/LICENSE
 **
-** Built at: 2013-06-06 12:42:45Z
+** Built at: 2013-06-13 01:21:28Z
 */
 
 (function() {
   var $, Annotator, Delegator, LinkParser, Range, TaskManager, XLogger, fn, functions, g, gettext, util, _Annotator, _CompositeTask, _Task, _TaskGen, _gettext, _i, _j, _len, _len2, _ref, _ref2, _t,
-    __slice = Array.prototype.slice,
+    __bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; },
     __indexOf = Array.prototype.indexOf || function(item) { for (var i = 0, l = this.length; i < l; i++) { if (i in this && this[i] === item) return i; } return -1; },
+    __slice = Array.prototype.slice,
     __hasProp = Object.prototype.hasOwnProperty,
-    __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor; child.__super__ = parent.prototype; return child; },
-    __bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; };
+    __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor; child.__super__ = parent.prototype; return child; };
 
   window.XLOG_LEVEL = {
     ERROR: 5,
@@ -28,7 +28,7 @@
   XLogger = (function() {
 
     function XLogger(name) {
-      this.name = name;
+      this.replacer = __bind(this.replacer, this);      this.name = name;
       this.setLevel(XLOG_LEVEL.INFO);
     }
 
@@ -53,14 +53,39 @@
       return "[" + this.elapsedTime() + " ms]";
     };
 
+    XLogger.prototype.replacer = function(key, value) {
+      if ((value != null) && value instanceof Object) {
+        if (__indexOf.call(this.cache, value) >= 0) {
+          return "circular";
+        } else {
+          this.cache.push(value);
+        }
+      }
+      return value;
+    };
+
     XLogger.prototype._log = function(level, objects) {
-      var line, lines, obj, text, time, _i, _len, _results;
+      var line, lines, obj, result, text, time, _i, _len, _results;
       if (level >= this.level) {
         time = this.time();
         _results = [];
         for (_i = 0, _len = objects.length; _i < _len; _i++) {
           obj = objects[_i];
-          text = obj == null ? "null" : obj instanceof Error ? obj.stack : JSON.stringify(obj, null, 2);
+          text = (function() {
+            if (obj == null) {
+              return "null";
+            } else if (obj instanceof Error) {
+              return obj.stack;
+            } else {
+              try {
+                result = JSON.stringify(obj, null, 2);
+              } catch (exception) {
+                console.log(obj);
+                result = "<SEE ABOVE>";
+              }
+              return result;
+            }
+          })();
           lines = text.split("\n");
           _results.push((function() {
             var _j, _len2, _results2;
@@ -464,6 +489,9 @@
       if (mappings.length === 0) {
         throw new Error("No mappings found for [" + start + ":" + end + "]!");
       }
+      mappings = mappings.sort(function(a, b) {
+        return a.element.start - b.element.start;
+      });
       this.log.trace("Building range...");
       r = this.rootWin.document.createRange();
       startMapping = mappings[0];
@@ -803,9 +831,8 @@
     DomTextMapper.prototype.computeSourcePositions = function(match) {
       var dc, displayEnd, displayIndex, displayStart, displayText, sc, sourceEnd, sourceIndex, sourceStart, sourceText;
       this.log.trace("In computeSourcePosition");
-      this.log.trace(match.element.path);
-      this.log.trace(match.element.node.data);
-      this.log.trace("Calculating source position at " + match.element.path);
+      this.log.trace("Path is '" + match.element.path + "'");
+      this.log.trace("Node data is: ", match.element.node.data);
       sourceText = match.element.node.data.replace(/\n/g, " ");
       this.log.trace("sourceText is '" + sourceText + "'");
       displayText = match.element.content;
@@ -821,6 +848,9 @@
       sourceIndex = 0;
       displayIndex = 0;
       while (!((sourceStart != null) && (sourceEnd != null))) {
+        if (sourceIndex === sourceText.length) {
+          throw new Error("Error! This node (at '" + match.element.path + "') looks different compared to what I remember! Maybe the document was updated, but d-t-m was not notified?");
+        }
         sc = sourceText[sourceIndex];
         dc = displayText[displayIndex];
         if (sc === dc) {
@@ -1720,7 +1750,7 @@
     }
 
     BrowserRange.prototype.normalize = function(root) {
-      var changed, isImg, it, node, nr, offset, p, r, _k, _len3, _ref2;
+      var changed, isImg, it, next, node, nr, offset, p, r, _k, _len3, _ref2;
       if (this.tainted) {
         console.error(_t("You may only call normalize() once on a BrowserRange!"));
         return false;
@@ -1755,9 +1785,14 @@
         r[p + 'Offset'] = offset;
         r[p + 'Img'] = isImg;
       }
+      if (r.start === r.end && r.startOffset === r.endOffset) {
+        throw new Error("Trying to normalize invalid brower range, where startOffset == endOffset = " + r.startOffset + "!");
+      }
       changed = false;
       if (r.startOffset > 0) {
-        if (r.start.data.length > r.startOffset) {
+        if (r.start.data.length < r.startOffset) {
+          throw new Error("Normalizing invalid browser range: data length is " + r.start.data.length + ", but wanted start offset is " + r.startOffset);
+        } else if (r.start.data.length > r.startOffset) {
           nr.start = r.start.splitText(r.startOffset);
           changed = true;
         } else {
@@ -1768,7 +1803,7 @@
       }
       if (r.start === r.end && !r.startImg) {
         if ((r.endOffset - r.startOffset) < nr.start.nodeValue.length) {
-          nr.start.splitText(r.endOffset - r.startOffset);
+          next = nr.start.splitText(r.endOffset - r.startOffset);
           changed = true;
         } else {
 

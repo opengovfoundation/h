@@ -6,7 +6,7 @@
 ** Dual licensed under the MIT and GPLv3 licenses.
 ** https://github.com/okfn/annotator/blob/master/LICENSE
 **
-** Built at: 2013-06-06 12:42:53Z
+** Built at: 2013-06-06 13:31:04Z
 */
 
 (function() {
