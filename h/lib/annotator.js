@@ -1,21 +1,21 @@
 /*
-** Annotator 1.2.6-dev-4c40463
+** Annotator 1.2.6-dev-f18c18d
 ** https://github.com/okfn/annotator/
 **
 ** Copyright 2012 Aron Carroll, Rufus Pollock, and Nick Stenning.
 ** Dual licensed under the MIT and GPLv3 licenses.
 ** https://github.com/okfn/annotator/blob/master/LICENSE
 **
-** Built at: 2013-06-13 01:21:28Z
+** Built at: 2013-06-13 13:48:25Z
 */
 
 (function() {
   var $, Annotator, Delegator, LinkParser, Range, TaskManager, XLogger, fn, functions, g, gettext, util, _Annotator, _CompositeTask, _Task, _TaskGen, _gettext, _i, _j, _len, _len2, _ref, _ref2, _t,
-    __bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; },
-    __indexOf = Array.prototype.indexOf || function(item) { for (var i = 0, l = this.length; i < l; i++) { if (i in this && this[i] === item) return i; } return -1; },
     __slice = Array.prototype.slice,
+    __indexOf = Array.prototype.indexOf || function(item) { for (var i = 0, l = this.length; i < l; i++) { if (i in this && this[i] === item) return i; } return -1; },
     __hasProp = Object.prototype.hasOwnProperty,
-    __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor; child.__super__ = parent.prototype; return child; };
+    __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor; child.__super__ = parent.prototype; return child; },
+    __bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; };
 
   window.XLOG_LEVEL = {
     ERROR: 5,
@@ -28,7 +28,7 @@
   XLogger = (function() {
 
     function XLogger(name) {
-      this.replacer = __bind(this.replacer, this);      this.name = name;
+      this.name = name;
       this.setLevel(XLOG_LEVEL.INFO);
     }
 
@@ -51,17 +51,6 @@
 
     XLogger.prototype.time = function() {
       return "[" + this.elapsedTime() + " ms]";
-    };
-
-    XLogger.prototype.replacer = function(key, value) {
-      if ((value != null) && value instanceof Object) {
-        if (__indexOf.call(this.cache, value) >= 0) {
-          return "circular";
-        } else {
-          this.cache.push(value);
-        }
-      }
-      return value;
     };
 
     XLogger.prototype._log = function(level, objects) {
@@ -390,6 +379,9 @@
 
     DomTextMapper.prototype.getContentForPath = function(path) {
       if (path == null) path = null;
+      if (this.path == null) {
+        throw new Error("Can't get info before running a scan() !");
+      }
       if (path == null) path = this.getDefaultPath();
       return this.path[path].content;
     };
@@ -3130,6 +3122,7 @@
 
     Annotator.prototype.setupAnnotation = function(annotation) {
       var anchor, normed, normedRanges, root, t, _k, _l, _len3, _len4, _ref2;
+      this.log.trace("Setting up annotation", annotation);
       root = this.wrapper[0];
       annotation.target || (annotation.target = this.selectedTargets);
       if (annotation.target == null) {
