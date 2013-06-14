@@ -1,12 +1,12 @@
 /*
-** Annotator 1.2.6-dev-b54923e
+** Annotator 1.2.6-dev-a36c490
 ** https://github.com/okfn/annotator/
 **
 ** Copyright 2012 Aron Carroll, Rufus Pollock, and Nick Stenning.
 ** Dual licensed under the MIT and GPLv3 licenses.
 ** https://github.com/okfn/annotator/blob/master/LICENSE
 **
-** Built at: 2013-06-14 01:28:30Z
+** Built at: 2013-06-14 10:25:51Z
 */
 
 
@@ -115,11 +115,12 @@
       }
       info = {
         instanceName: reason,
+        useDefaultProress: useDefaultProgress,
         data: {
           extraURIs: extraURIs
         }
       };
-      return this.loadGen.create(info, useDefaultProgress);
+      return this.loadGen.create(info);
     };
 
     Store.prototype._getAnnotations = function() {

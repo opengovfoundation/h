@@ -1,12 +1,12 @@
 /*
-** Annotator 1.2.6-dev-b54923e
+** Annotator 1.2.6-dev-96aba46
 ** https://github.com/okfn/annotator/
 **
 ** Copyright 2012 Aron Carroll, Rufus Pollock, and Nick Stenning.
 ** Dual licensed under the MIT and GPLv3 licenses.
 ** https://github.com/okfn/annotator/blob/master/LICENSE
 **
-** Built at: 2013-06-14 01:28:47Z
+** Built at: 2013-06-14 11:42:48Z
 */
 
 
@@ -2226,6 +2226,9 @@
       _results = [];
       for (_k = 0, _len2 = toAdd.length; _k < _len2; _k++) {
         dep = toAdd[_k];
+        if (dep == null) {
+          throw Error("Trying to add null dependency!");
+        }
         _results.push(this._deps.push(dep));
       }
       return _results;
@@ -2319,11 +2322,8 @@
       this.composite = info.composite;
     }
 
-    _TaskGen.prototype.create = function(info, useDefaultProgress) {
+    _TaskGen.prototype.create = function(info) {
       var instanceInfo;
-      if (useDefaultProgress == null) {
-        useDefaultProgress = true;
-      }
       this.count += 1;
       if (info == null) {
         info = {};
@@ -2332,12 +2332,13 @@
         name: this.name + " #" + this.count + ": " + info.instanceName,
         code: this.todo,
         deps: info.deps,
-        data: info.data
+        data: info.data,
+        useDefaultProgress: info.useDefaultProgress
       };
       if (this.composite) {
         return this.manager.createComposite(instanceInfo);
       } else {
-        return this.manager.create(instanceInfo, useDefaultProgress);
+        return this.manager.create(instanceInfo);
       }
     };
 
@@ -2482,16 +2483,17 @@
         this.log.debug("When defining sub-task '" + info.name + "', overriding this existing sub-task: " + oldSubTaskID);
         this._deleteSubTask(oldSubTaskID);
       }
+      info.useDefaultProgress = false;
       return this.addSubTask({
         weight: w,
-        task: this.manager.create(info, false)
+        task: this.manager.create(info)
       });
     };
 
     _CompositeTask.prototype.createDummySubTask = function(info) {
       return this.addSubTask({
         weight: 0,
-        task: this.manager.createDummy(info, false)
+        task: this.manager.createDummy(info)
       });
     };
 
@@ -2532,16 +2534,16 @@
       return name;
     };
 
-    TaskManager.prototype.create = function(info, useDefaultProgress) {
+    TaskManager.prototype.create = function(info) {
       var cb, name, task, _k, _len2, _ref1;
-      if (useDefaultProgress == null) {
-        useDefaultProgress = true;
-      }
       name = this._checkName(info);
       info.manager = this;
+      if (info.useDefaultProgress == null) {
+        info.useDefaultProgress = true;
+      }
       task = new _Task(info);
       this.tasks[task._name] = task;
-      if (useDefaultProgress) {
+      if (info.useDefaultProgress) {
         _ref1 = this.defaultProgressCallbacks;
         for (_k = 0, _len2 = _ref1.length; _k < _len2; _k++) {
           cb = _ref1[_k];
@@ -2551,14 +2553,11 @@
       return task;
     };
 
-    TaskManager.prototype.createDummy = function(info, useDefaultProgress) {
-      if (useDefaultProgress == null) {
-        useDefaultProgress = true;
-      }
+    TaskManager.prototype.createDummy = function(info) {
       info.code = function(task) {
         return task.resolve();
       };
-      return this.create(info, useDefaultProgress);
+      return this.create(info);
     };
 
     TaskManager.prototype.createGenerator = function(info) {
@@ -2872,7 +2871,7 @@
     };
 
     Annotator.prototype.defineAsyncInitTasks = function() {
-      var info, scan,
+      var scan,
         _this = this;
       this.init = this.tasks.createComposite({
         name: "Booting Annotator"
@@ -2921,11 +2920,11 @@
           name: "Skipping scan"
         });
       } else {
-        info = {
+        scan = this._scanGen.create({
           instanceName: "Initial scan",
-          deps: ["wrapper"]
-        };
-        scan = this._scanGen.create(info, false);
+          deps: ["wrapper"],
+          useDefaultProgress: false
+        });
         this.init.addSubTask({
           weight: 20,
           task: scan
@@ -3442,9 +3441,10 @@
           instanceName: from + "-" + to,
           data: {
             annotations: annBatch
-          }
+          },
+          useDefaultProgress: false
         };
-        batchTask = this.loadBatchTaskGen.create(info, false);
+        batchTask = this.loadBatchTaskGen.create(info);
         this.pendingLoad.addSubTask({
           deps: this.pendingLoad.lastSubTask,
           weight: annBatch.length,
