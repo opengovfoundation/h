@@ -1,12 +1,12 @@
 /*
-** Annotator 1.2.6-dev-96aba46
+** Annotator 1.2.6-dev-90e4a93
 ** https://github.com/okfn/annotator/
 **
 ** Copyright 2012 Aron Carroll, Rufus Pollock, and Nick Stenning.
 ** Dual licensed under the MIT and GPLv3 licenses.
 ** https://github.com/okfn/annotator/blob/master/LICENSE
 **
-** Built at: 2013-06-14 11:42:48Z
+** Built at: 2013-06-14 21:51:44Z
 */
 
 
@@ -2174,7 +2174,7 @@
         info.deps = [];
       }
       this.setDeps(info.deps);
-      this.started = false;
+      this._started = false;
       this.dfd = new jQuery.Deferred();
       this.dfd._notify = this.dfd.notify;
       this.dfd.notify = function(data) {
@@ -2211,6 +2211,14 @@
         return _this.dfd._reject(data);
       };
       this.dfd.promise(this);
+      this._state = this.state;
+      this.state = function() {
+        if (_this._started) {
+          return _this._state();
+        } else {
+          return "waiting";
+        }
+      };
     }
 
     _Task.prototype.setDeps = function(deps) {
@@ -2245,7 +2253,7 @@
       return this.log.debug("Deps now:", this._deps);
     };
 
-    _Task.prototype.resolveDeps = function() {
+    _Task.prototype._resolveDeps = function() {
       var dep;
       return this._depsResolved = (function() {
         var _k, _len2, _ref1, _results;
@@ -2262,8 +2270,7 @@
     _Task.prototype._start = function() {
       var dep, _k, _len2, _ref1,
         _this = this;
-      if (this.started) {
-        this.log.debug("This task ('" + this._name + "') has already been started!");
+      if (this.state() !== "waiting") {
         return;
       }
       if (this._depsResolved == null) {
@@ -2277,7 +2284,7 @@
           return;
         }
       }
-      this.started = true;
+      this._started = true;
       return setTimeout(function() {
         var exception;
         _this.dfd.notify({
@@ -2297,10 +2304,10 @@
     };
 
     _Task.prototype._skip = function(reason) {
-      if (this.started) {
+      if (this.state() !== "waiting") {
         return;
       }
-      this.started = true;
+      this._started = true;
       reason = "Skipping, because " + reason;
       this.dfd.notify({
         progress: 1,
@@ -2491,8 +2498,9 @@
     };
 
     _CompositeTask.prototype.createDummySubTask = function(info) {
+      info.useDefaultProgress = false;
       return this.addSubTask({
-        weight: 0,
+        weight: 1,
         task: this.manager.createDummy(info)
       });
     };
@@ -2504,8 +2512,12 @@
   TaskManager = (function() {
     function TaskManager(name) {
       this.name = name;
-      if (this.log == null) {
-        this.log = getXLogger(name + " TaskMan");
+      if (!this.log) {
+        if (typeof getXLogger !== "undefined" && getXLogger !== null) {
+          this.log = getXLogger(name + " TaskMan");
+        } else {
+          this.log = console;
+        }
       }
       this.defaultProgressCallbacks = [];
     }
@@ -2610,10 +2622,10 @@
       _ref1 = this.tasks;
       for (name in _ref1) {
         task = _ref1[name];
-        if (!task.started) {
+        if (task.state() === "waiting") {
           try {
-            deps = task.resolveDeps();
-            if (deps.length === 0 && !task.started) {
+            deps = task._resolveDeps();
+            if (deps.length === 0) {
               task._start();
             } else if (deps.length === 1) {
               deps[0].done(task._start);
@@ -2666,7 +2678,7 @@
         _results = [];
         for (name in _ref1) {
           task = _ref1[name];
-          if (task.state() === "pending" && task.started) {
+          if (task.state() === "pending") {
             _results.push(name);
           }
         }
@@ -2678,14 +2690,14 @@
       _results = [];
       for (name in _ref1) {
         task = _ref1[name];
-        if (!(!task.started)) {
+        if (!(task.state() === "waiting")) {
           continue;
         }
         t = "Task '" + name + "'";
         this.log.info("Analyzing waiting " + t);
         try {
-          deps = task.resolveDeps();
-          if (deps.length === 0 && !task.started) {
+          deps = task._resolveDeps();
+          if (deps.length === 0) {
             _results.push(this.log.info(t + " has no dependencies; just nobody has started it. Schedule() ? "));
           } else {
             pending = [];
@@ -3498,7 +3510,7 @@
     };
 
     Annotator.prototype.addPlugin = function(name, options) {
-      var klass, plugin, taskInfo, _base,
+      var klass, plugin, taskInfo, _base, _ref1,
         _this = this;
       this.log.debug("Loading plugin '" + name + "'...");
       if (this.plugins[name]) {
@@ -3525,11 +3537,11 @@
                 }
               };
             }
-            plugin.initTask = this.init.state() === "pending" ? (taskInfo.weight != null ? taskInfo.weight : taskInfo.weight = 1, this.init.createSubTask(taskInfo)) : this.tasks.create(taskInfo);
+            plugin.initTask = (_ref1 = this.init.state()) === "waiting" || _ref1 === "pending" ? (taskInfo.weight != null ? taskInfo.weight : taskInfo.weight = 1, this.init.createSubTask(taskInfo)) : this.tasks.create(taskInfo);
             if ((options != null ? options.deps : void 0) != null) {
               plugin.initTask.addDeps(options.deps);
             }
-            if (this.init.started) {
+            if (this.init.state() !== "waiting") {
               this.tasks.schedule();
             }
           } else {

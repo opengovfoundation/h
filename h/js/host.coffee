@@ -94,8 +94,8 @@ class Annotator.Host extends Annotator
       batch = @pendingSetup.lastSubTask
 
       # Check whether we can put this incoming annotation into this batch
-      if batch.started or batch._data.annotations.length is 10
-        # The current batch is full, we need a new batch
+      if batch.state() isnt "waiting" or batch._data.annotations.length is 10
+        # The latest branch is already running, or is full, so we need a new batch
         info =
           instanceName: @pendingSetupCount + "-"
           data: annotations: []

@@ -1,12 +1,12 @@
 /*
-** Annotator 1.2.6-dev-a36c490
+** Annotator 1.2.6-dev-2cce1db
 ** https://github.com/okfn/annotator/
 **
 ** Copyright 2012 Aron Carroll, Rufus Pollock, and Nick Stenning.
 ** Dual licensed under the MIT and GPLv3 licenses.
 ** https://github.com/okfn/annotator/blob/master/LICENSE
 **
-** Built at: 2013-06-14 10:25:51Z
+** Built at: 2013-06-14 21:40:07Z
 */
 
 
@@ -82,7 +82,7 @@
             _this.annotator.init.addSubTask({
               task: _this.startLoading("plugin init", [], false)
             });
-            if (_this.annotator.init.started) {
+            if (_this.annotator.init.state() !== "waiting") {
               _this.tasks.schedule();
             }
           }
