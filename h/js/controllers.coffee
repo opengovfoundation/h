@@ -31,7 +31,7 @@ class App
       code: (task) =>
         this.realInit $compile, $element, $http, $location, $scope, $timeout,
           annotator, drafts, flash
-        task.ready()
+        task.resolve()
 
   realInit: (
     $compile, $element, $http, $location, $scope, $timeout,
@@ -182,7 +182,7 @@ class App
         # When load is ready, close the "shadow" task
         if annotator.firstLoad?
           load.done =>
-            annotator.firstLoad.dfd.ready()
+            annotator.firstLoad.dfd.resolve()
             delete annotator.firstLoad
         
 

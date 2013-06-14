@@ -54,7 +54,7 @@ class Annotator.Host extends Annotator
       code: (task, data) =>
         for n in data.annotations
           this.setupAnnotationReal n
-        task.ready()
+        task.resolve()
 
     # We need to override the normal setupAnnotation call, so we save it
     @setupAnnotationReal = @setupAnnotation
@@ -139,14 +139,14 @@ class Annotator.Host extends Annotator
         .appendTo(@wrapper)
         .addClass('annotator-frame annotator-outer annotator-collapsed')
         .bind 'load', =>
-          task.ready()      
+          task.resolve()      
 
     @init.createSubTask
       name: "set time in SideBar"
       deps: ["panel channel"] # We need the channel to talk to sidebar
       code: (task) =>    
         @panel.notify method: 'setLoggerStartTime', params: window.XLoggerStartTime
-        task.ready()
+        task.resolve()
         
     @init.createSubTask
       name: "load bridge plugin"
@@ -168,7 +168,7 @@ class Annotator.Host extends Annotator
             for k, v of annotation when k in whitelist
               parsed[k] = v
             parsed
-        task.ready()
+        task.resolve()
 
     @init.createSubTask
       name: "api channel"
@@ -180,7 +180,7 @@ class Annotator.Host extends Annotator
           scope: 'annotator:api'
           window: @frame[0].contentWindow
           onReady: =>
-            task.ready()
+            task.resolve()
 
     @init.createSubTask
       name: "panel channel"
@@ -275,7 +275,7 @@ class Annotator.Host extends Annotator
               @drag.last = null
             )
 
-            task.ready()
+            task.resolve()
 
     # Create a task for scanning the doc
     info =

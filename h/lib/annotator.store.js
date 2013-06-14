@@ -1,22 +1,22 @@
 /*
-** Annotator 1.2.6-dev-fe8a355
+** Annotator 1.2.6-dev-b54923e
 ** https://github.com/okfn/annotator/
 **
 ** Copyright 2012 Aron Carroll, Rufus Pollock, and Nick Stenning.
 ** Dual licensed under the MIT and GPLv3 licenses.
 ** https://github.com/okfn/annotator/blob/master/LICENSE
 **
-** Built at: 2013-06-06 13:31:04Z
+** Built at: 2013-06-14 01:28:30Z
 */
+
 
 (function() {
   var __bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; },
-    __hasProp = Object.prototype.hasOwnProperty,
-    __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor; child.__super__ = parent.prototype; return child; },
-    __indexOf = Array.prototype.indexOf || function(item) { for (var i = 0, l = this.length; i < l; i++) { if (i in this && this[i] === item) return i; } return -1; };
+    __hasProp = {}.hasOwnProperty,
+    __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; },
+    __indexOf = [].indexOf || function(item) { for (var i = 0, l = this.length; i < l; i++) { if (i in this && this[i] === item) return i; } return -1; };
 
   Annotator.Plugin.Store = (function(_super) {
-
     __extends(Store, _super);
 
     Store.prototype.events = {
@@ -49,7 +49,9 @@
       this.annotations = [];
       this.initTaskInfo = {
         code: function(task) {
-          if (!Annotator.supported()) task.failed("Annotator is not supported.");
+          if (!Annotator.supported()) {
+            task.reject("Annotator is not supported.");
+          }
           _this.tasks = _this.annotator.tasks;
           _this.log = _this.annotator.log;
           _this.loadGen = _this.tasks.createGenerator({
@@ -78,18 +80,24 @@
           });
           if (!options.noLoading) {
             _this.annotator.init.addSubTask({
-              task: _this.startLoading("plugin init")
-            }, [], false);
-            if (_this.annotator.init.started) _this.tasks.schedule();
+              task: _this.startLoading("plugin init", [], false)
+            });
+            if (_this.annotator.init.started) {
+              _this.tasks.schedule();
+            }
           }
-          return task.ready();
+          return task.resolve();
         }
       };
     }
 
     Store.prototype.pluginInit = function() {
-      if (!Annotator.supported()) return;
-      if (this.options.noLoading) return;
+      if (!Annotator.supported()) {
+        return;
+      }
+      if (this.options.noLoading) {
+        return;
+      }
       if (this.annotator.plugins.Auth) {
         return this.annotator.plugins.Auth.withToken(this._getAnnotations);
       } else {
@@ -99,8 +107,12 @@
 
     Store.prototype.startLoading = function(reason, extraURIs, useDefaultProgress) {
       var info;
-      if (extraURIs == null) extraURIs = [];
-      if (useDefaultProgress == null) useDefaultProgress = true;
+      if (extraURIs == null) {
+        extraURIs = [];
+      }
+      if (useDefaultProgress == null) {
+        useDefaultProgress = true;
+      }
       info = {
         instanceName: reason,
         data: {
@@ -123,7 +135,7 @@
       if (__indexOf.call(this.annotations, annotation) < 0) {
         this.registerAnnotation(annotation);
         return this._apiRequest('create', annotation, function(data) {
-          if (!(data.id != null)) {
+          if (data.id == null) {
             _this.annotator.log.warn(Annotator._t("Warning: No ID returned from server for annotation "), annotation);
           }
           return _this.updateAnnotation(annotation, data);
@@ -173,8 +185,10 @@
     };
 
     Store.prototype._onLoadAnnotations = function(data) {
-      var task, _ref, _ref2;
-      if (data == null) data = [];
+      var task, _ref, _ref1;
+      if (data == null) {
+        data = [];
+      }
       if (data.length) {
         this.annotations = this.annotations.concat(data);
         this.annotator.loadAnnotations(data.slice());
@@ -182,8 +196,8 @@
       if (((_ref = this.pendingLoading) != null ? _ref.state() : void 0) === "pending") {
         this.pendingRequests -= 1;
         if (!this.pendingRequests) {
-          _ref2 = [this.pendingLoading, null], task = _ref2[0], this.pendingLoading = _ref2[1];
-          return task.ready();
+          _ref1 = [this.pendingLoading, null], task = _ref1[0], this.pendingLoading = _ref1[1];
+          return task.resolve();
         }
       }
     };
@@ -193,7 +207,9 @@
     };
 
     Store.prototype._onLoadAnnotationsFromSearch = function(data) {
-      if (data == null) data = {};
+      if (data == null) {
+        data = {};
+      }
       return this._onLoadAnnotations(data.rows || []);
     };
 
@@ -246,7 +262,9 @@
         opts.data = {
           json: data
         };
-        if (this.options.emulateHTTP) opts.data._method = method;
+        if (this.options.emulateHTTP) {
+          opts.data._method = method;
+        }
         return opts;
       }
       opts = $.extend(opts, {
@@ -283,12 +301,14 @@
       delete annotation.highlights;
       $.extend(annotation, this.options.annotationData);
       data = JSON.stringify(annotation);
-      if (highlights) annotation.highlights = highlights;
+      if (highlights) {
+        annotation.highlights = highlights;
+      }
       return data;
     };
 
     Store.prototype._onError = function(xhr) {
-      var action, message, task, _ref, _ref2;
+      var action, message, task, _ref, _ref1;
       action = xhr._action;
       message = Annotator._t("Sorry we could not ") + action + Annotator._t(" this annotation");
       if (xhr._action === 'search') {
@@ -309,8 +329,8 @@
       Annotator.showNotification(message, Annotator.Notification.ERROR);
       this.annotator.log.error(Annotator._t("API request failed:"), xhr);
       if (((_ref = this.pendingLoading) != null ? _ref.state() : void 0) === "pending") {
-        _ref2 = [this.pendingLoading, null], task = _ref2[0], this.pendingLoading = _ref2[1];
-        return task.failed("Coult not load annotations: API request failed.");
+        _ref1 = [this.pendingLoading, null], task = _ref1[0], this.pendingLoading = _ref1[1];
+        return task.reject("Coult not load annotations: API request failed.");
       }
     };
 

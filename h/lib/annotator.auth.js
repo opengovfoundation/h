@@ -1,18 +1,19 @@
 /*
-** Annotator 1.2.6-dev-fe8a355
+** Annotator 1.2.6-dev-b54923e
 ** https://github.com/okfn/annotator/
 **
 ** Copyright 2012 Aron Carroll, Rufus Pollock, and Nick Stenning.
 ** Dual licensed under the MIT and GPLv3 licenses.
 ** https://github.com/okfn/annotator/blob/master/LICENSE
 **
-** Built at: 2013-06-06 13:31:08Z
+** Built at: 2013-06-14 01:28:02Z
 */
+
 
 (function() {
   var base64Decode, base64UrlDecode, createDateFromISO8601, parseToken,
-    __hasProp = Object.prototype.hasOwnProperty,
-    __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor; child.__super__ = parent.prototype; return child; };
+    __hasProp = {}.hasOwnProperty,
+    __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
 
   createDateFromISO8601 = function(string) {
     var d, date, offset, regexp, time, _ref;
@@ -20,12 +21,24 @@
     d = string.match(new RegExp(regexp));
     offset = 0;
     date = new Date(d[1], 0, 1);
-    if (d[3]) date.setMonth(d[3] - 1);
-    if (d[5]) date.setDate(d[5]);
-    if (d[7]) date.setHours(d[7]);
-    if (d[8]) date.setMinutes(d[8]);
-    if (d[10]) date.setSeconds(d[10]);
-    if (d[12]) date.setMilliseconds(Number("0." + d[12]) * 1000);
+    if (d[3]) {
+      date.setMonth(d[3] - 1);
+    }
+    if (d[5]) {
+      date.setDate(d[5]);
+    }
+    if (d[7]) {
+      date.setHours(d[7]);
+    }
+    if (d[8]) {
+      date.setMinutes(d[8]);
+    }
+    if (d[10]) {
+      date.setSeconds(d[10]);
+    }
+    if (d[12]) {
+      date.setMilliseconds(Number("0." + d[12]) * 1000);
+    }
     if (d[14]) {
       offset = (Number(d[16]) * 60) + Number(d[17]);
       offset *= (_ref = d[15] === '-') != null ? _ref : {
@@ -48,7 +61,9 @@
       ac = 0;
       dec = "";
       tmp_arr = [];
-      if (!data) return data;
+      if (!data) {
+        return data;
+      }
       data += '';
       while (i < data.length) {
         h1 = b64.indexOf(data.charAt(i++));
@@ -72,10 +87,10 @@
   };
 
   base64UrlDecode = function(data) {
-    var i, m, _ref;
+    var i, m, _i, _ref;
     m = data.length % 4;
     if (m !== 0) {
-      for (i = 0, _ref = 4 - m; 0 <= _ref ? i < _ref : i > _ref; 0 <= _ref ? i++ : i--) {
+      for (i = _i = 0, _ref = 4 - m; 0 <= _ref ? _i < _ref : _i > _ref; i = 0 <= _ref ? ++_i : --_i) {
         data += '=';
       }
     }
@@ -91,7 +106,6 @@
   };
 
   Annotator.Plugin.Auth = (function(_super) {
-
     __extends(Auth, _super);
 
     Auth.prototype.options = {
@@ -109,7 +123,7 @@
         code: function(task) {
           if (_this.options.token) {
             _this.setToken(_this.options.token);
-            return task.ready;
+            return task.resolve();
           } else {
             return _this.requestToken();
           }
@@ -138,7 +152,7 @@
         var _ref;
         _this.setToken(data);
         if (((_ref = _this.initTask) != null ? _ref.state() : void 0) === "pending") {
-          return _this.initTask.dfd.ready(_this._unsafeToken);
+          return _this.initTask.dfd.resolve(_this._unsafeToken);
         }
       }).fail(function(xhr, status, err) {
         var msg, _ref;
@@ -146,7 +160,7 @@
         _this.annotator.log.error("" + msg + " " + err, xhr);
         Annotator.showNotification("" + msg + " " + xhr.responseText, Annotator.Notification.ERROR);
         if (((_ref = _this.initTask) != null ? _ref.state() : void 0) === "pending") {
-          return _this.initTask.dfd.failed(msg + xhr.responseText);
+          return _this.initTask.dfd.reject(msg + xhr.responseText);
         }
       }).always(function() {
         return _this.requestInProgress = false;
@@ -212,12 +226,16 @@
       if (this.annotator.asyncMode) {
         throw new Error("You are not supposed to use withToken in Async Mode!");
       }
-      if (!(callback != null)) return;
+      if (callback == null) {
+        return;
+      }
       if (this.haveValidToken()) {
         return callback(this._unsafeToken);
       } else {
         this.waitingForToken.push(callback);
-        if (!this.requestInProgress) return this.requestToken();
+        if (!this.requestInProgress) {
+          return this.requestToken();
+        }
       }
     };
 

@@ -12,14 +12,14 @@ class Annotator.Plugin.Discovery extends Annotator.Plugin
       this.href
 
     unless svc.length
-      if task then task.failed()
+      if task then task.reject()
       return
 
     href = svc[0].href
 
     $.getJSON href, (data) =>
       unless data?.links?
-        if task then task.failed()
+        if task then task.reject()
         return
 
       options =
@@ -36,4 +36,4 @@ class Annotator.Plugin.Discovery extends Annotator.Plugin
         options.urls[action] = url.replace(options.prefix, '')
 
       @annotator.publish 'serviceDiscovery', options
-      if task then task.ready()
+      if task then task.resolve()

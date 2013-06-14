@@ -55,7 +55,7 @@ class Hypothesis extends Annotator
         # XXX: Change me when Annotator stops assuming things about viewers
         @viewer = 
           addField: (-> )
-        task.ready()
+        task.resolve()
 
     # This task overrides an upstream task
     @init.createDummySubTask name: "dynamic CSS style"
@@ -95,7 +95,7 @@ class Hypothesis extends Annotator
           window: $window.parent
           onReady: =>
             # Signal that the task is done    
-            task.ready()
+            task.resolve()
 
         .bind('addToken', (ctx, token) =>
           @element.scope().token = token
@@ -111,7 +111,7 @@ class Hypothesis extends Annotator
           window: $window.parent
           onReady: =>
             # Signal that the task is done
-            task.ready()
+            task.resolve()
 
             # Dodge toolbars [DISABLE]
             #@provider.getMaxBottom (max) =>
@@ -144,7 +144,7 @@ class Hypothesis extends Annotator
           )
 
           .bind('initDone', (ctx) =>
-            @hostInit.dfd.ready()
+            @hostInit.dfd.resolve()
           )
         
           .bind('initProgress', (ctx, status) =>
@@ -173,7 +173,7 @@ class Hypothesis extends Annotator
               noLoading: true
 
             @options.Store = options
-            task.ready()
+            task.resolve()
 
     @init.createSubTask
       name: "load store plugin"
@@ -181,7 +181,7 @@ class Hypothesis extends Annotator
       code: (task) =>
         this.addPlugin 'Store', @options.Store
         this.patch_store this.plugins.Store
-        task.ready()
+        task.resolve()
 
     # Create a "shadow" task for the initial loading
     @firstLoad = @init.createSubTask

@@ -137,7 +137,7 @@ class Annotator.Plugin.Bridge extends Annotator.Plugin
     if @initTask?.state() is "pending"
       # An async plugin init process is pending.
       # Signal that it's finished.
-      @initTask.dfd.ready()
+      @initTask.dfd.resolve()
 
   beforeCreateAnnotation: (annotation, cb) ->
     @channel.call
