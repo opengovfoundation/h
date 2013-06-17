@@ -1,12 +1,12 @@
 /*
-** Annotator 1.2.6-dev-b54923e
+** Annotator 1.2.6-dev-49afc89
 ** https://github.com/okfn/annotator/
 **
 ** Copyright 2012 Aron Carroll, Rufus Pollock, and Nick Stenning.
 ** Dual licensed under the MIT and GPLv3 licenses.
 ** https://github.com/okfn/annotator/blob/master/LICENSE
 **
-** Built at: 2013-06-14 01:28:47Z
+** Built at: 2013-06-17 00:55:57Z
 */
 
 
@@ -2174,43 +2174,51 @@
         info.deps = [];
       }
       this.setDeps(info.deps);
-      this.started = false;
-      this.dfd = new jQuery.Deferred();
-      this.dfd._notify = this.dfd.notify;
-      this.dfd.notify = function(data) {
-        return _this.dfd._notify($.extend(data, {
+      this._started = false;
+      this._ctrl = new jQuery.Deferred();
+      this._ctrl._notify = this._ctrl.notify;
+      this._ctrl.notify = function(data) {
+        return _this._ctrl._notify($.extend(data, {
           task: _this
         }));
       };
-      this.dfd._resolve = this.dfd.resolve;
-      this.dfd.resolve = function(data) {
+      this._ctrl._resolve = this._ctrl.resolve;
+      this._ctrl.resolve = function(data) {
         var elapsedTime, endTime;
-        if (_this.dfd.state() !== "pending") {
-          throw new Error("Called ready() on a task in state '" + _this.dfd.state() + "'!");
+        if (_this._ctrl.state() !== "pending") {
+          throw new Error("Called ready() on a task in state '" + _this._ctrl.state() + "'!");
         }
         endTime = new Date().getTime();
-        elapsedTime = endTime - _this.dfd.startTime;
-        _this.dfd.notify({
+        elapsedTime = endTime - _this._ctrl.startTime;
+        _this._ctrl.notify({
           progress: 1,
           text: "Finished in " + elapsedTime + "ms."
         });
-        return _this.dfd._resolve(data);
+        return _this._ctrl._resolve(data);
       };
-      this.dfd._reject = this.dfd.reject;
-      this.dfd.reject = function(data) {
+      this._ctrl._reject = this._ctrl.reject;
+      this._ctrl.reject = function(data) {
         var elapsedTime, endTime;
-        if (_this.dfd.state() !== "pending") {
-          throw new Error("Called failed() on a task in state '" + _this.dfd.state() + "'!");
+        if (_this._ctrl.state() !== "pending") {
+          throw new Error("Called failed() on a task in state '" + _this._ctrl.state() + "'!");
         }
         endTime = new Date().getTime();
-        elapsedTime = endTime - _this.dfd.startTime;
-        _this.dfd.notify({
+        elapsedTime = endTime - _this._ctrl.startTime;
+        _this._ctrl.notify({
           progress: 1,
           text: "Failed in " + elapsedTime + "ms."
         });
-        return _this.dfd._reject(data);
+        return _this._ctrl._reject(data);
       };
-      this.dfd.promise(this);
+      this._ctrl.promise(this);
+      this._state = this.state;
+      this.state = function() {
+        if (_this._started) {
+          return _this._state();
+        } else {
+          return "waiting";
+        }
+      };
     }
 
     _Task.prototype.setDeps = function(deps) {
@@ -2226,6 +2234,9 @@
       _results = [];
       for (_k = 0, _len2 = toAdd.length; _k < _len2; _k++) {
         dep = toAdd[_k];
+        if (dep == null) {
+          throw Error("Trying to add null dependency!");
+        }
         _results.push(this._deps.push(dep));
       }
       return _results;
@@ -2242,7 +2253,7 @@
       return this.log.debug("Deps now:", this._deps);
     };
 
-    _Task.prototype.resolveDeps = function() {
+    _Task.prototype._resolveDeps = function() {
       var dep;
       return this._depsResolved = (function() {
         var _k, _len2, _ref1, _results;
@@ -2259,8 +2270,7 @@
     _Task.prototype._start = function() {
       var dep, _k, _len2, _ref1,
         _this = this;
-      if (this.started) {
-        this.log.debug("This task ('" + this._name + "') has already been started!");
+      if (this.state() !== "waiting") {
         return;
       }
       if (this._depsResolved == null) {
@@ -2274,36 +2284,36 @@
           return;
         }
       }
-      this.started = true;
+      this._started = true;
       return setTimeout(function() {
         var exception;
-        _this.dfd.notify({
+        _this._ctrl.notify({
           progress: 0,
           text: "Starting"
         });
-        _this.dfd.startTime = new Date().getTime();
+        _this._ctrl.startTime = new Date().getTime();
         try {
-          return _this._todo(_this.dfd, _this._data);
+          return _this._todo(_this._ctrl, _this._data);
         } catch (_error) {
           exception = _error;
           _this.log.error("Error while executing task '" + _this._name + "': " + exception);
           _this.log.error(exception);
-          return _this.dfd.reject("Exception: " + exception.message);
+          return _this._ctrl.reject("Exception: " + exception.message);
         }
       });
     };
 
     _Task.prototype._skip = function(reason) {
-      if (this.started) {
+      if (this.state() !== "waiting") {
         return;
       }
-      this.started = true;
+      this._started = true;
       reason = "Skipping, because " + reason;
-      this.dfd.notify({
+      this._ctrl.notify({
         progress: 1,
         text: reason
       });
-      return this.dfd._reject(this._name + " was skipped, because " + reason);
+      return this._ctrl._reject(this._name + " was skipped, because " + reason);
     };
 
     return _Task;
@@ -2319,11 +2329,8 @@
       this.composite = info.composite;
     }
 
-    _TaskGen.prototype.create = function(info, useDefaultProgress) {
+    _TaskGen.prototype.create = function(info) {
       var instanceInfo;
-      if (useDefaultProgress == null) {
-        useDefaultProgress = true;
-      }
       this.count += 1;
       if (info == null) {
         info = {};
@@ -2332,12 +2339,13 @@
         name: this.name + " #" + this.count + ": " + info.instanceName,
         code: this.todo,
         deps: info.deps,
-        data: info.data
+        data: info.data,
+        useDefaultProgress: info.useDefaultProgress
       };
       if (this.composite) {
         return this.manager.createComposite(instanceInfo);
       } else {
-        return this.manager.create(instanceInfo, useDefaultProgress);
+        return this.manager.create(instanceInfo);
       }
     };
 
@@ -2354,7 +2362,7 @@
         throw new Error("You can not specify code for a CompositeTask!");
       }
       info.code = function() {
-        return _this.trigger.dfd._resolve();
+        return _this.trigger._ctrl._resolve();
       };
       _CompositeTask.__super__.constructor.call(this, info);
       this.subTasks = {};
@@ -2364,16 +2372,16 @@
       this.trigger = this.createSubTask({
         weight: 0,
         name: info.name + "__init",
-        code: function(task) {}
+        code: function() {}
       });
       this.lastSubTask = this.trigger;
     }
 
     _CompositeTask.prototype._finished = function() {
       if (this.failedSubTasks) {
-        return this.dfd.reject(this.failReasons);
+        return this._ctrl.reject(this.failReasons);
       } else {
-        return this.dfd.resolve();
+        return this._ctrl.resolve();
       }
     };
 
@@ -2385,7 +2393,7 @@
     _CompositeTask.prototype.addSubTask = function(info) {
       var task, weight, _ref1,
         _this = this;
-      if (this.dfd.state() !== "pending") {
+      if (this._ctrl.state() !== "pending") {
         throw new Error("Can not add subTask to a finished task!");
       }
       weight = (_ref1 = info.weight) != null ? _ref1 : 1;
@@ -2446,7 +2454,7 @@
         if (info.text != null) {
           report.text = task._name + ": " + info.text;
         }
-        return _this.dfd.notify(report);
+        return _this._ctrl.notify(report);
       });
       this.lastSubTask = task;
       return task;
@@ -2482,16 +2490,18 @@
         this.log.debug("When defining sub-task '" + info.name + "', overriding this existing sub-task: " + oldSubTaskID);
         this._deleteSubTask(oldSubTaskID);
       }
+      info.useDefaultProgress = false;
       return this.addSubTask({
         weight: w,
-        task: this.manager.create(info, false)
+        task: this.manager.create(info)
       });
     };
 
     _CompositeTask.prototype.createDummySubTask = function(info) {
+      info.useDefaultProgress = false;
       return this.addSubTask({
-        weight: 0,
-        task: this.manager.createDummy(info, false)
+        weight: 1,
+        task: this.manager.createDummy(info)
       });
     };
 
@@ -2502,8 +2512,12 @@
   TaskManager = (function() {
     function TaskManager(name) {
       this.name = name;
-      if (this.log == null) {
-        this.log = getXLogger(name + " TaskMan");
+      if (!this.log) {
+        if (typeof getXLogger !== "undefined" && getXLogger !== null) {
+          this.log = getXLogger(name + " TaskMan");
+        } else {
+          this.log = console;
+        }
       }
       this.defaultProgressCallbacks = [];
     }
@@ -2532,16 +2546,16 @@
       return name;
     };
 
-    TaskManager.prototype.create = function(info, useDefaultProgress) {
+    TaskManager.prototype.create = function(info) {
       var cb, name, task, _k, _len2, _ref1;
-      if (useDefaultProgress == null) {
-        useDefaultProgress = true;
-      }
       name = this._checkName(info);
       info.manager = this;
+      if (info.useDefaultProgress == null) {
+        info.useDefaultProgress = true;
+      }
       task = new _Task(info);
       this.tasks[task._name] = task;
-      if (useDefaultProgress) {
+      if (info.useDefaultProgress) {
         _ref1 = this.defaultProgressCallbacks;
         for (_k = 0, _len2 = _ref1.length; _k < _len2; _k++) {
           cb = _ref1[_k];
@@ -2551,14 +2565,11 @@
       return task;
     };
 
-    TaskManager.prototype.createDummy = function(info, useDefaultProgress) {
-      if (useDefaultProgress == null) {
-        useDefaultProgress = true;
-      }
-      info.code = function(task) {
-        return task.resolve();
+    TaskManager.prototype.createDummy = function(info) {
+      info.code = function(taskCtrl) {
+        return taskCtrl.resolve();
       };
-      return this.create(info, useDefaultProgress);
+      return this.create(info);
     };
 
     TaskManager.prototype.createGenerator = function(info) {
@@ -2611,10 +2622,10 @@
       _ref1 = this.tasks;
       for (name in _ref1) {
         task = _ref1[name];
-        if (!task.started) {
+        if (task.state() === "waiting") {
           try {
-            deps = task.resolveDeps();
-            if (deps.length === 0 && !task.started) {
+            deps = task._resolveDeps();
+            if (deps.length === 0) {
               task._start();
             } else if (deps.length === 1) {
               deps[0].done(task._start);
@@ -2667,7 +2678,7 @@
         _results = [];
         for (name in _ref1) {
           task = _ref1[name];
-          if (task.state() === "pending" && task.started) {
+          if (task.state() === "pending") {
             _results.push(name);
           }
         }
@@ -2679,14 +2690,14 @@
       _results = [];
       for (name in _ref1) {
         task = _ref1[name];
-        if (!(!task.started)) {
+        if (!(task.state() === "waiting")) {
           continue;
         }
         t = "Task '" + name + "'";
         this.log.info("Analyzing waiting " + t);
         try {
-          deps = task.resolveDeps();
-          if (deps.length === 0 && !task.started) {
+          deps = task._resolveDeps();
+          if (deps.length === 0) {
             _results.push(this.log.info(t + " has no dependencies; just nobody has started it. Schedule() ? "));
           } else {
             pending = [];
@@ -2833,14 +2844,14 @@
       });
       this.loadBatchTaskGen = this.tasks.createGenerator({
         name: "anchoring annotation batch",
-        code: function(task, data) {
+        code: function(taskCtrl, data) {
           var n, _k, _len2, _ref2;
           _ref2 = data.annotations;
           for (_k = 0, _len2 = _ref2.length; _k < _len2; _k++) {
             n = _ref2[_k];
             _this.setupAnnotation(n);
           }
-          return task.resolve();
+          return taskCtrl.resolve();
         }
       });
       if (!this.options.noInit) {
@@ -2872,48 +2883,48 @@
     };
 
     Annotator.prototype.defineAsyncInitTasks = function() {
-      var info, scan,
+      var scan,
         _this = this;
       this.init = this.tasks.createComposite({
         name: "Booting Annotator"
       });
       this.init.createSubTask({
         name: "dynamic CSS styles",
-        code: function(task) {
+        code: function(taskCtrl) {
           _this._setupDynamicStyle();
-          return task.resolve();
+          return taskCtrl.resolve();
         }
       });
       this.init.createSubTask({
         name: "wrapper",
-        code: function(task) {
+        code: function(taskCtrl) {
           _this._setupWrapper();
-          return task.resolve();
+          return taskCtrl.resolve();
         }
       });
       this.init.createSubTask({
         name: "adder",
         deps: ["wrapper"],
-        code: function(task) {
+        code: function(taskCtrl) {
           _this.adder = $(_this.html.adder).appendTo(_this.wrapper).hide();
-          return task.resolve();
+          return taskCtrl.resolve();
         }
       });
       this.init.createSubTask({
         name: "viewer & editor",
         deps: ["wrapper"],
-        code: function(task) {
+        code: function(taskCtrl) {
           _this._setupViewer()._setupEditor();
-          return task.resolve();
+          return taskCtrl.resolve();
         }
       });
       this._scanGen = this.tasks.createGenerator({
         name: "scan document",
-        code: function(task) {
+        code: function(taskCtrl) {
           var s;
           s = _this._scanAsync();
-          s.progress(task.notify);
-          return s.done(task.resolve);
+          s.progress(taskCtrl.notify);
+          return s.done(taskCtrl.resolve);
         }
       });
       if (this.options.noScan) {
@@ -2921,11 +2932,11 @@
           name: "Skipping scan"
         });
       } else {
-        info = {
+        scan = this._scanGen.create({
           instanceName: "Initial scan",
-          deps: ["wrapper"]
-        };
-        scan = this._scanGen.create(info, false);
+          deps: ["wrapper"],
+          useDefaultProgress: false
+        });
         this.init.addSubTask({
           weight: 20,
           task: scan
@@ -2934,11 +2945,11 @@
       return this.init.createSubTask({
         name: "document events",
         deps: ["wrapper", "viewer & editor", scan, "dynamic CSS styles", "adder"],
-        code: function(task) {
+        code: function(taskCtrl) {
           if (!_this.options.readOnly) {
             _this._setupDocumentEvents();
           }
-          return task.resolve();
+          return taskCtrl.resolve();
         }
       });
     };
@@ -3442,9 +3453,10 @@
           instanceName: from + "-" + to,
           data: {
             annotations: annBatch
-          }
+          },
+          useDefaultProgress: false
         };
-        batchTask = this.loadBatchTaskGen.create(info, false);
+        batchTask = this.loadBatchTaskGen.create(info);
         this.pendingLoad.addSubTask({
           deps: this.pendingLoad.lastSubTask,
           weight: annBatch.length,
@@ -3498,7 +3510,7 @@
     };
 
     Annotator.prototype.addPlugin = function(name, options) {
-      var klass, plugin, taskInfo, _base,
+      var klass, plugin, taskInfo, _base, _ref1,
         _this = this;
       this.log.debug("Loading plugin '" + name + "'...");
       if (this.plugins[name]) {
@@ -3518,18 +3530,18 @@
               taskInfo = {
                 name: "plugin " + name,
                 deps: plugin.deps,
-                code: function(task) {
+                code: function(taskCtrl) {
                   plugin.asyncMode = true;
                   plugin.pluginInit();
-                  return task.resolve();
+                  return taskCtrl.resolve();
                 }
               };
             }
-            plugin.initTask = this.init.state() === "pending" ? (taskInfo.weight != null ? taskInfo.weight : taskInfo.weight = 1, this.init.createSubTask(taskInfo)) : this.tasks.create(taskInfo);
+            plugin.initTask = (_ref1 = this.init.state()) === "waiting" || _ref1 === "pending" ? (taskInfo.weight != null ? taskInfo.weight : taskInfo.weight = 1, this.init.createSubTask(taskInfo)) : this.tasks.create(taskInfo);
             if ((options != null ? options.deps : void 0) != null) {
               plugin.initTask.addDeps(options.deps);
             }
-            if (this.init.started) {
+            if (this.init.state() !== "waiting") {
               this.tasks.schedule();
             }
           } else {

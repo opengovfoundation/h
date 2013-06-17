@@ -1,12 +1,12 @@
 /*
-** Annotator 1.2.6-dev-b54923e
+** Annotator 1.2.6-dev-49afc89
 ** https://github.com/okfn/annotator/
 **
 ** Copyright 2012 Aron Carroll, Rufus Pollock, and Nick Stenning.
 ** Dual licensed under the MIT and GPLv3 licenses.
 ** https://github.com/okfn/annotator/blob/master/LICENSE
 **
-** Built at: 2013-06-14 01:28:30Z
+** Built at: 2013-06-17 00:59:37Z
 */
 
 
@@ -48,18 +48,18 @@
       Store.__super__.constructor.apply(this, arguments);
       this.annotations = [];
       this.initTaskInfo = {
-        code: function(task) {
+        code: function(taskCtrl) {
           if (!Annotator.supported()) {
-            task.reject("Annotator is not supported.");
+            taskCtrl.reject("Annotator is not supported.");
           }
           _this.tasks = _this.annotator.tasks;
           _this.log = _this.annotator.log;
           _this.loadGen = _this.tasks.createGenerator({
             name: "load annotations",
-            code: function(task, data) {
+            code: function(taskCtrl, data) {
               var extraURIs, href, searchOptions, _i, _len, _results;
               extraURIs = data.extraURIs;
-              _this.pendingLoading = task;
+              _this.pendingLoading = taskCtrl;
               _this.pendingRequests = 1 + extraURIs.length;
               _this.log.info("Sending request for " + _this.options.annotationData.uri);
               if (_this.options.loadFromSearch) {
@@ -82,11 +82,11 @@
             _this.annotator.init.addSubTask({
               task: _this.startLoading("plugin init", [], false)
             });
-            if (_this.annotator.init.started) {
+            if (_this.annotator.init.state() !== "waiting") {
               _this.tasks.schedule();
             }
           }
-          return task.resolve();
+          return taskCtrl.resolve();
         }
       };
     }
@@ -115,11 +115,12 @@
       }
       info = {
         instanceName: reason,
+        useDefaultProress: useDefaultProgress,
         data: {
           extraURIs: extraURIs
         }
       };
-      return this.loadGen.create(info, useDefaultProgress);
+      return this.loadGen.create(info);
     };
 
     Store.prototype._getAnnotations = function() {
@@ -185,7 +186,7 @@
     };
 
     Store.prototype._onLoadAnnotations = function(data) {
-      var task, _ref, _ref1;
+      var taskCtrl, _ref, _ref1;
       if (data == null) {
         data = [];
       }
@@ -196,8 +197,8 @@
       if (((_ref = this.pendingLoading) != null ? _ref.state() : void 0) === "pending") {
         this.pendingRequests -= 1;
         if (!this.pendingRequests) {
-          _ref1 = [this.pendingLoading, null], task = _ref1[0], this.pendingLoading = _ref1[1];
-          return task.resolve();
+          _ref1 = [this.pendingLoading, null], taskCtrl = _ref1[0], this.pendingLoading = _ref1[1];
+          return taskCtrl.resolve();
         }
       }
     };

@@ -1,12 +1,12 @@
 /*
-** Annotator 1.2.6-dev-b54923e
+** Annotator 1.2.6-dev-49afc89
 ** https://github.com/okfn/annotator/
 **
 ** Copyright 2012 Aron Carroll, Rufus Pollock, and Nick Stenning.
 ** Dual licensed under the MIT and GPLv3 licenses.
 ** https://github.com/okfn/annotator/blob/master/LICENSE
 **
-** Built at: 2013-06-14 01:28:02Z
+** Built at: 2013-06-17 00:56:06Z
 */
 
 
@@ -120,11 +120,12 @@
       this.waitingForToken = [];
       this.initTaskInfo = {
         name: "auth token",
-        code: function(task) {
+        code: function(taskCtrl) {
           if (_this.options.token) {
             _this.setToken(_this.options.token);
-            return task.resolve();
+            return taskCtrl.resolve();
           } else {
+            _this.pendingLoad = taskCtrl;
             return _this.requestToken();
           }
         }
@@ -149,18 +150,20 @@
           withCredentials: true
         }
       }).done(function(data, status, xhr) {
-        var _ref;
+        var taskCtrl, _ref, _ref1;
         _this.setToken(data);
-        if (((_ref = _this.initTask) != null ? _ref.state() : void 0) === "pending") {
-          return _this.initTask.dfd.resolve(_this._unsafeToken);
+        if (((_ref = _this.pendingLoad) != null ? _ref.state() : void 0) === "pending") {
+          _ref1 = [_this.pendingLoad, null], taskCtrl = _ref1[0], _this.pendingLoad = _ref1[1];
+          return taskCtrl.resolve(_this._unsafeToken);
         }
       }).fail(function(xhr, status, err) {
-        var msg, _ref;
+        var msg, taskCtrl, _ref, _ref1;
         msg = Annotator._t("Couldn't get auth token:");
         _this.annotator.log.error("" + msg + " " + err, xhr);
         Annotator.showNotification("" + msg + " " + xhr.responseText, Annotator.Notification.ERROR);
-        if (((_ref = _this.initTask) != null ? _ref.state() : void 0) === "pending") {
-          return _this.initTask.dfd.reject(msg + xhr.responseText);
+        if (((_ref = _this.pendingLoad) != null ? _ref.state() : void 0) === "pending") {
+          _ref1 = [_this.pendingLoad, null], taskCtrl = _ref1[0], _this.pendingLoad = _ref1[1];
+          return taskCtrl.reject(msg + xhr.responseText);
         }
       }).always(function() {
         return _this.requestInProgress = false;

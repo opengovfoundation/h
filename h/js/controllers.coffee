@@ -180,9 +180,9 @@ class App
         load = annotator.plugins.Store.startLoading "token changed", extraURIs
 
         # When load is ready, close the "shadow" task
-        if annotator.firstLoad?
+        if annotator.firstLoadCtrl?
           load.done =>
-            annotator.firstLoad.dfd.resolve()
+            annotator.firstLoadCtrl.resolve()
             delete annotator.firstLoad
         
 

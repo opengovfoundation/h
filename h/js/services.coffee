@@ -144,12 +144,12 @@ class Hypothesis extends Annotator
           )
 
           .bind('initDone', (ctx) =>
-            @hostInit.dfd.resolve()
+            @hostInitCtrl.resolve()
           )
         
           .bind('initProgress', (ctx, status) =>
             delete status.task
-            @hostInit.dfd.notify status
+            @hostInitCtrl.notify status
           ) 
 
     @init.createSubTask
@@ -186,13 +186,13 @@ class Hypothesis extends Annotator
     # Create a "shadow" task for the initial loading
     @firstLoad = @init.createSubTask
       name: "wait for load"
-      code: ->
+      code: (taskCtrl) => @firstLoadCtrl = taskCtrl
 
     # Create a "shadow" task for things happening on the host side
     @hostInit = @init.createSubTask
       weight: 50
       name: "host init"
-      code: ->
+      code: (taskCtrl) => @hostInitCtrl = taskCtrl
 
     # Load plugins
     # (This will create the appropriate init tasks, too.)

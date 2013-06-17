@@ -48,7 +48,8 @@ class Annotator.Plugin.Bridge extends Annotator.Plugin
 
     @initTaskInfo =
       name: "bridge plugin"
-      code: =>
+      code: (taskCtrl) =>
+        @pendingInit = taskCtrl
         @options.onReady = this.onReady
         @channel = Channel.build @options
 
@@ -134,10 +135,11 @@ class Annotator.Plugin.Bridge extends Annotator.Plugin
     .bind('showViewer', (ctx, annotations) =>
       @annotator.showViewer (this._parse a for a in annotations)
     )
-    if @initTask?.state() is "pending"
+    if @pendingInit?.state() is "pending"
       # An async plugin init process is pending.
       # Signal that it's finished.
-      @initTask.dfd.resolve()
+      [taskCtrl, @pendingInit] = [@pendingInit, null]
+      taskCtrl.resolve()
 
   beforeCreateAnnotation: (annotation, cb) ->
     @channel.call
