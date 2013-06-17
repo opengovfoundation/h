@@ -28,10 +28,10 @@ class App
         "plugin Heatmap", # We are talking to headmap
         "plugin Store"    # We will use this to start loading the annotations
       ]
-      code: (task) =>
+      code: (taskCtrl) =>
         this.realInit $compile, $element, $http, $location, $scope, $timeout,
           annotator, drafts, flash
-        task.resolve()
+        taskCtrl.resolve()
 
   realInit: (
     $compile, $element, $http, $location, $scope, $timeout,

@@ -51,10 +51,10 @@ class Annotator.Host extends Annotator
 
     @setupBatchTaskGen = @tasks.createGenerator
       name: "setting up annotation batch"
-      code: (task, data) =>
+      code: (taskCtrl, data) =>
         for n in data.annotations
           this.setupAnnotationReal n
-        task.resolve()
+        taskCtrl.resolve()
 
     # We need to override the normal setupAnnotation call, so we save it
     @setupAnnotationReal = @setupAnnotation
@@ -124,7 +124,7 @@ class Annotator.Host extends Annotator
     @init.createSubTask
       name: "iframe"
       deps: ["wrapper"] # We are appending the iframe element to the wrapper
-      code: (task) =>
+      code: (taskCtrl) =>
         if document.baseURI and window.PDFView?
           # XXX: Hack around PDF.js resource: origin. Bug in jschannel?
           hostOrigin = '*'
@@ -139,19 +139,19 @@ class Annotator.Host extends Annotator
         .appendTo(@wrapper)
         .addClass('annotator-frame annotator-outer annotator-collapsed')
         .bind 'load', =>
-          task.resolve()      
+          taskCtrl.resolve()      
 
     @init.createSubTask
       name: "set time in SideBar"
       deps: ["panel channel"] # We need the channel to talk to sidebar
-      code: (task) =>    
+      code: (taskCtrl) =>    
         @panel.notify method: 'setLoggerStartTime', params: window.XLoggerStartTime
-        task.resolve()
+        taskCtrl.resolve()
         
     @init.createSubTask
       name: "load bridge plugin"
       deps: ["iframe"]  # We need this to configure the plugin
-      code: (task) =>
+      code: (taskCtrl) =>
         # Set up the bridge plugin, which bridges the main annotation methods
         # between the host page and the panel widget.
         whitelist = ['diffHTML', 'quote', 'ranges', 'target', 'id']
@@ -168,24 +168,24 @@ class Annotator.Host extends Annotator
             for k, v of annotation when k in whitelist
               parsed[k] = v
             parsed
-        task.resolve()
+        taskCtrl.resolve()
 
     @init.createSubTask
       name: "api channel"
       deps: ["iframe"] # We need this to build the channel
-      code: (task) =>
+      code: (taskCtrl) =>
         # Build a channel for the publish API
         @api = Channel.build
           origin: '*'
           scope: 'annotator:api'
           window: @frame[0].contentWindow
           onReady: =>
-            task.resolve()
+            taskCtrl.resolve()
 
     @init.createSubTask
       name: "panel channel"
       deps: ["iframe"] # We need this to build the channel
-      code: (task) =>
+      code: (taskCtrl) =>
         # Build a channel for the panel UI
         @panel = Channel.build
           origin: '*'
@@ -275,7 +275,7 @@ class Annotator.Host extends Annotator
               @drag.last = null
             )
 
-            task.resolve()
+            taskCtrl.resolve()
 
     # Create a task for scanning the doc
     info =

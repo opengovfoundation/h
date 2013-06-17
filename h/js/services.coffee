@@ -50,12 +50,12 @@ class Hypothesis extends Annotator
     # This task overrides an upstream task
     @init.createSubTask
       name: "viewer & editor"
-      code: (task) =>
+      code: (taskCtrl) =>
         # Here as a noop just to make the Permissions plugin happy
         # XXX: Change me when Annotator stops assuming things about viewers
         @viewer = 
           addField: (-> )
-        task.resolve()
+        taskCtrl.resolve()
 
     # This task overrides an upstream task
     @init.createDummySubTask name: "dynamic CSS style"
@@ -88,14 +88,14 @@ class Hypothesis extends Annotator
 
     @init.createSubTask
       name: "api channel"
-      code: (task) =>
+      code: (taskCtrl) =>
         @api = Channel.build
           origin: origin
           scope: 'annotator:api'
           window: $window.parent
           onReady: =>
             # Signal that the task is done    
-            task.resolve()
+            taskCtrl.resolve()
 
         .bind('addToken', (ctx, token) =>
           @element.scope().token = token
@@ -104,14 +104,14 @@ class Hypothesis extends Annotator
 
     @init.createSubTask
       name: "panel channel"
-      code: (task) =>
+      code: (taskCtrl) =>
         @provider = Channel.build
           origin: origin
           scope: 'annotator:panel'
           window: $window.parent
           onReady: =>
             # Signal that the task is done
-            task.resolve()
+            taskCtrl.resolve()
 
             # Dodge toolbars [DISABLE]
             #@provider.getMaxBottom (max) =>
@@ -158,7 +158,7 @@ class Hypothesis extends Annotator
         "panel channel", # we are talking to @provider
         "discovery" # we need the store options from discovery
       ]
-      code: (task) =>
+      code: (taskCtrl) =>
         # Get the location of the annotated document
         @provider.call
           method: 'getHref'
@@ -173,15 +173,15 @@ class Hypothesis extends Annotator
               noLoading: true
 
             @options.Store = options
-            task.resolve()
+            taskCtrl.resolve()
 
     @init.createSubTask
       name: "load store plugin"
       deps: ["href"] # we need the store options prepared with the right href
-      code: (task) =>
+      code: (taskCtrl) =>
         this.addPlugin 'Store', @options.Store
         this.patch_store this.plugins.Store
-        task.resolve()
+        taskCtrl.resolve()
 
     # Create a "shadow" task for the initial loading
     @firstLoad = @init.createSubTask
