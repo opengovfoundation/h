@@ -267,7 +267,7 @@ button, input[type=submit], .btn {
 //EXCERPT////////////////////////////////
 .excerpt {
   position: relative;
-  blockquote {
+  q {
     margin-bottom: 0;
   }
   .more, .less {
@@ -278,7 +278,7 @@ button, input[type=submit], .btn {
   }
 }
 
-blockquote {
+q {
   color: $gray;
   font-family: $serifFontFamily;
   font-size: 1em;
@@ -462,6 +462,10 @@ blockquote {
 
 .check-icon {
   @include fonticon("\35", left);
+}
+
+.pen-icon {
+  @include fonticon("\27", left);
 }
 
 .x-icon {

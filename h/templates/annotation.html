@@ -10,9 +10,11 @@
       <ul class="dropdown-menu pull-right" role="menu">
         <li class="reply-icon"
             ng-click="reply()">Reply</li>
-        <li class="clipboard-icon"
+        <li class="pen-icon"
             ng-show="authorize('update')"
             ng-click="edit()">Edit</li>
+        <li class="clipboard-icon"
+            ng-click="copy()">Copy...</li>
         <li class="x-icon"
             ng-show="authorize('delete')"
             ng-click="delete()">Delete…</li>
@@ -113,15 +115,24 @@
          role="button"
          title="More actions">More</a>
       <ul class="dropdown-menu" role="menu">
-        <li class="clipboard-icon"
+        <li class="pen-icon"
             ng-show="authorize('update')" ng-click="edit()">Edit</li>
         <li class="x-icon"
             ng-show="authorize('delete')"
             ng-click="delete()">Delete…</li>
+        <li class="clipboard-icon"
+            ng-click="copy()">Copy...</li>
         <li class="flag-icon"
             ng-hide="authorize('delete')"
             ng-click="flag()">Flag…</li>
       </ul>
     </div>
+  </div>
+
+  <!-- HTML source view -->
+  <div class="body" ng-show="viewSource">
+    <span class="close" role="button" title="Hide source"
+          ng-click="viewSource = false"></span>
+    <textarea>{{source}}</textarea>
   </div>
 </form>

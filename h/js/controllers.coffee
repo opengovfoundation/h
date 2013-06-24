@@ -235,8 +235,16 @@ class App
 
 
 class Annotation
-  this.$inject = ['$element', '$location', '$scope', 'annotator', 'drafts', '$timeout']
-  constructor: ($element, $location, $scope, annotator, drafts, $timeout) ->
+  this.$inject = [
+    '$compile', '$element', '$filter', '$location',
+    '$scope', '$templateCache', '$timeout',
+    'annotator', 'drafts'
+  ]
+  constructor: (
+    $compile,    $element,   $filter,   $location,
+    $scope,   $templateCache,   $timeout,
+    annotator,    drafts
+  ) ->
     threading = annotator.threading
     $scope.action = 'create'
 
@@ -250,6 +258,16 @@ class Annotation
         else
           $scope.model.$modelValue.text = $scope.origText
           $scope.action = 'create'
+
+    $scope.copy = ->
+      scope = angular.extend $scope.$new(), $scope.model.$modelValue,
+        text: ($filter 'converter') $scope.model.$modelValue.text
+      template = $compile($templateCache.get('citation.html'))
+      instance = template scope
+      $timeout ->
+        $scope.source = instance[0].outerHTML
+        $scope.viewSource = true
+        $scope.$digest()
 
     $scope.save = ->
       $scope.editing = false

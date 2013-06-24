@@ -18,7 +18,7 @@
       </div>
     </div>
 
-    <div class="content paper yui3-g"
+    <div class="h-cite content paper yui3-g"
          ng-controller="DisplayerCtrl"
          ng-init="annotation.text='${annotation['text']}';
                   annotation.date='${annotation['date']}';
@@ -30,10 +30,6 @@
                   annotation.deleted = '${annotation['deleted']}'">
       <div class="knockout noise yui3-u-1">
         <div ng-view=""></div>
-        <strong>
-            <a class="pull-right"
-               href="{{annotation.uri}}">To Source</a>
-        </strong>
 
         <div class="page">
           <strong tal:condition="annotation['user']">
@@ -42,7 +38,7 @@
           <div class="domain">
             <img class="favicon" tal:condition="len(favicon_link)"
                  src="${favicon_link}"/>
-            <a href="${annotation['uri']}">${title}</a>
+            <a class="p-name u-url" href="${annotation['uri']}">${title}</a>
             |
             <a href="${source}">${source_stripped}</a>
           </div>
@@ -51,7 +47,7 @@
         <div class="card-grid yui3-g">
           <div class="yui3-u-1 t-yui3-u-1-2">
             <div class="paper excerpt">
-              <blockquote>{{annotation.quote}}</blockquote>
+              <q class="p-content">{{annotation.quote}}</q>
             </div>
           </div>
 

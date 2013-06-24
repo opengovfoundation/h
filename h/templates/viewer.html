@@ -18,8 +18,8 @@
     <!-- Excerpts -->
     <div class="paper excerpt"
          ng-repeat="target in thread.message.target">
-      <blockquote ng-bind="target.quote" ng-hide="diff" />
-      <blockquote ng-bind-html-unsafe="target.diffHTML" ng-show="diff" />
+      <q ng-bind="target.quote" ng-hide="diff" />
+      <q ng-bind-html-unsafe="target.diffHTML" ng-show="diff" />
       <div class="small pull-right" ng-show="target.diffHTML">
         <input type="checkbox" ng-model="diff">Show differences</input>
       </div>
