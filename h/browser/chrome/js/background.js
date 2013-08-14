@@ -15,6 +15,8 @@ var ACTION_STATES = {
   }
 }
 
+var TAB_STATE = 'state'
+
 
 function inject(tab) {
   chrome.tabs.executeScript(null, {
@@ -24,7 +26,7 @@ function inject(tab) {
 
 
 function state(tabId, value) {
-  var stateMap = localStorage.getItem('state')
+  var stateMap = localStorage.getItem(TAB_STATE)
   stateMap = stateMap ? JSON.parse(stateMap) : {}
 
   if (value === undefined) {
@@ -37,7 +39,7 @@ function state(tabId, value) {
     delete stateMap[tabId]
   }
 
-  localStorage.setItem('state', JSON.stringify(stateMap))
+  localStorage.setItem(TAB_STATE, JSON.stringify(stateMap))
 
   return value
 }
