@@ -22,6 +22,10 @@ class Annotator.Host extends Annotator
     Gettext.prototype.parse_locale_data annotator_locale_data
     super
 
+    this.subscribe "sidebarOpened", -> console.log "Sidebar opened."
+    this.subscribe "sidebarClosed", -> console.log "Sidebar closed."
+
+
     @app = @options.app
     delete @options.app
 
@@ -110,12 +114,14 @@ class Annotator.Host extends Annotator
           @frame.css 'margin-left': "#{-1 * @frame.width()}px"
           @frame.removeClass 'annotator-no-transition'
           @frame.removeClass 'annotator-collapsed'
+          this.publish "sidebarOpened"
         )
 
         .bind('hideFrame', =>
           @frame.css 'margin-left': ''
           @frame.removeClass 'annotator-no-transition'
           @frame.addClass 'annotator-collapsed'
+          this.publish "sidebarClosed"
         )
 
         .bind('dragFrame', (ctx, screenX) =>
