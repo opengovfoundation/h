@@ -379,6 +379,14 @@ fuzzytime = ['$filter', '$window', ($filter, $window) ->
   template: '<span class="small">{{ftime | date:mediumDate}}</span>'
 ]
 
+streamviewer = [ ->
+  link: (scope, elem, attr, ctrl) ->
+    return unless ctrl?
+
+  require: '?ngModel'
+  restrict: 'E'
+  templateUrl: 'streamviewer.html'
+]
 
 angular.module('h.directives', ['ngSanitize'])
   .directive('authentication', authentication)
@@ -396,4 +404,4 @@ angular.module('h.directives', ['ngSanitize'])
   .directive('ngBlur', ngBlur)
   .directive('repeatAnim', repeatAnim)
   .directive('notification', notification)
-
+  .directive('streamviewer', streamviewer)
