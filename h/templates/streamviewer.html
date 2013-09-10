@@ -1,7 +1,7 @@
       <div class="noise yui3-u-1"
            ng-show="annotations.length">
         <ul>
-          <li ng-repeat="annotation in annotations track by $index"
+          <li ng-repeat="annotation in annotations track by annotation.id"
               repeat-anim array="annotations"
               class="paper thread stream-list">
             <div class="excerpt"
@@ -45,7 +45,10 @@
                         <username ng-model="annotation.user"></username>
                       </strong>
                       <div class="body">
-                        <span ng-bind-html-unsafe="annotation.text | converter"/>
+                        <!--<span ng-bind-html-unsafe="annotation.text | converter"/>-->
+                        <markdown ng-model="$parent.annotation.text"
+                                  ng-readonly="true"
+                                  class="body"/>
                       </div>
                       <ul ng-model="annotation.tags"
                           ng-readonly="true"
