@@ -240,7 +240,6 @@ app = Bundle(
                 'app_directives',
                 'displayer',
                 'services',
-                'streamer',
                 'stream',
                 'streamfilter',
                 'streamsearch',
