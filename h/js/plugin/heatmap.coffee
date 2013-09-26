@@ -1,8 +1,6 @@
-$ = Annotator.$
-
 class Annotator.Plugin.Heatmap extends Annotator.Plugin
   # prototype constants
-  BUCKET_THRESHOLD_PAD: 25
+  BUCKET_THRESHOLD_PAD: 40
   BUCKET_SIZE: 50
   BOTTOM_CORRECTION: 14
 
@@ -40,44 +38,10 @@ class Annotator.Plugin.Heatmap extends Annotator.Plugin
   # index for fast hit detection in the buckets
   index: []
 
-  # whether to update the viewer as the window is scrolled
-  dynamicBucket: true
-
   constructor: (element, options) ->
     super $(@html), options
-    # this._rebaseUrls() -- not clear this is a great idea
-
-    if @options.container?
-      $(@options.container).append @element
-    else
-      $(element).append @element
-
-  pluginInit: ->
-    return unless d3?
-
-    events = [
-      'annotationCreated', 'annotationUpdated', 'annotationDeleted',
-      'annotationsLoaded'
-    ]
-    for event in events
-      if event is 'annotationCreated'
-        @annotator.subscribe event, =>
-          @dynamicBucket = false
-          this._update()
-      else
-        @annotator.subscribe event, this._update
-
-    @element.on 'click', (event) =>
-      event.stopPropagation()
-      this._fillDynamicBucket()
-      @dynamicBucket = true
-
-    $(window).on 'resize scroll', this._update
-    $(document.body).on 'resize scroll', '*', this._update
-
-    if window.PDFView?
-      # XXX: PDF.js hack
-      $(PDFView.container).on 'scroll', this._update
+    this._rebaseUrls()
+    @element.appendTo element
 
   _rebaseUrls: ->
     # We can't rely on browsers to implement the xml:base property correctly.
@@ -98,7 +62,7 @@ class Annotator.Plugin.Heatmap extends Annotator.Plugin
     rect.attr('fill', fill)
     rect.attr('filter', filter)
 
-  _collate: (a, b) ->
+  _collate: (a, b) =>
     for i in [0..a.length-1]
       if a[i] < b[i]
         return -1
@@ -113,10 +77,11 @@ class Annotator.Plugin.Heatmap extends Annotator.Plugin
     .interpolate(d3.interpolateHcl)
     c(v).toString()
 
-  _update: =>
-    wrapper = @annotator.wrapper
-    highlights = wrapper.find('.annotator-hl')
-    defaultView = wrapper[0].ownerDocument.defaultView
+  updateHeatmap: (data) =>
+    return unless d3?
+    
+    wrapper = this.element.offsetParent()
+    {highlights, offset} = data
 
     # Keep track of buckets of annotations above and below the viewport
     above = []
@@ -124,10 +89,10 @@ class Annotator.Plugin.Heatmap extends Annotator.Plugin
     comments = []
 
     # Construct control points for the heatmap highlights
-    points = highlights.toArray().reduce (points, hl, i) =>
-      d = $(hl).data('annotation')
-      x = $(hl).offset().top - wrapper.offset().top - defaultView.pageYOffset
-      h = $(hl).outerHeight(true)
+    points = highlights.reduce (points, hl, i) =>
+      x = hl.offset.top - wrapper.offset().top - offset
+      h = hl.height
+      d = hl.data
 
       # XXX: Hacky stuff before unattached annotations V2
       # Detect comments and push them into a separate bucket
@@ -233,7 +198,7 @@ class Annotator.Plugin.Heatmap extends Annotator.Plugin
     max = 0
     for b in @buckets
       info = b.reduce (info, a) ->
-        subtotal = a.reply_count or 0
+        subtotal = (a.thread?.flattenChildren()?.length or 0)
         return {
           top: info.top + 1
           replies: (info.replies or 0) + subtotal
@@ -275,7 +240,7 @@ class Annotator.Plugin.Heatmap extends Annotator.Plugin
           [offsets[1], i, 1, 1e-6] ]
 
     # Update the data bindings
-    element = d3.select(@element[0]).datum(highlights)
+    element = d3.select(@element[0]).datum(data)
 
     # Update gradient stops
     opacity = d3.scale.pow().domain([0, max]).range([.1, .6]).exponent(2)
@@ -308,72 +273,6 @@ class Annotator.Plugin.Heatmap extends Annotator.Plugin
     tabs.enter().append('div')
       .classed('heatmap-pointer', true)
 
-      # Creates highlights corresponding bucket when mouse is hovered
-      .on 'mousemove', (bucket) =>
-        highlights = wrapper.find('.annotator-hl')
-        highlights.toArray().forEach (hl) =>
-          if $(hl).data('annotation') in @buckets[bucket]
-            $(hl).addClass('annotator-hl-active')
-          else if not $(hl).hasClass('annotator-hl-temporary')
-            $(hl).removeClass('annotator-hl-active')
-
-      # Gets rid of them after
-      .on 'mouseout', =>
-        highlights = wrapper.find('.annotator-hl')
-        highlights.removeClass('annotator-hl-active')
-
-      # Does one of a few things when a tab is clicked depending on type
-      .on 'click', (bucket) =>
-        d3.event.stopPropagation()
-        highlights = wrapper.find('.annotator-hl')
-        pad = defaultView.innerHeight * .2
-
-        # If it's the upper tab, scroll to next bucket above
-        if @isUpper bucket
-          threshold = defaultView.pageYOffset
-          {next} = highlights.toArray().reduce (acc, hl) ->
-            {pos, next} = acc
-            if pos < $(hl).offset().top < threshold
-              pos: $(hl).offset().top
-              next: $(hl)
-            else
-              acc
-          , {pos: 0, next: null}
-          next?.scrollintoview
-            complete: ->
-              if this.parentNode is this.ownerDocument
-                scrollable = $(this.ownerDocument.body)
-              else
-                scrollable = $(this)
-              top = scrollable.scrollTop()
-              scrollable.stop().animate {scrollTop: top - pad}, 300
-
-        # If it's the lower tab, scroll to next bucket below
-        else if @isLower bucket
-          threshold = defaultView.pageYOffset + defaultView.innerHeight - pad
-          {next} = highlights.toArray().reduce (acc, hl) ->
-            {pos, next} = acc
-            if threshold < $(hl).offset().top < pos
-              pos: $(hl).offset().top
-              next: $(hl)
-            else
-              acc
-          , {pos: Number.MAX_VALUE, next: null}
-          next?.scrollintoview
-            complete: ->
-              if this.parentNode is this.ownerDocument
-                scrollable = $(this.ownerDocument.body)
-              else
-                scrollable = $(this)
-              top = scrollable.scrollTop()
-              scrollable.stop().animate {scrollTop: top + pad}, 300
-
-        # If it's neither of the above, load the bucket into the viewer
-        else
-          d3.event.stopPropagation()
-          @dynamicBucket = false
-          annotator.showViewer @buckets[bucket]
-
     tabs.exit().remove()
 
     tabs
@@ -390,24 +289,7 @@ class Annotator.Plugin.Heatmap extends Annotator.Plugin
     .style 'display', (d) =>
       if (@buckets[d].length is 0) then 'none' else ''
 
-    if @dynamicBucket
-      this._fillDynamicBucket()
-
-  _fillDynamicBucket: =>
-    top = window.pageYOffset
-    bottom = top + $(window).innerHeight()
-    highlights = @annotator.wrapper.find('.annotator-hl')
-    visible = highlights.toArray().reduce (acc, hl) =>
-      if $(hl).offset().top >= top and $(hl).offset().top <= bottom
-        if $(hl).data('annotation') not in acc
-          acc.push $(hl).data('annotation')
-      else
-        annotation = $(hl).data('annotation')
-        if not (annotation.target?.length or annotation.references?.length)
-          acc.push annotation
-      acc
-    , []
-    @annotator.updateViewer visible
+    this.publish('updated')
 
   isUpper:   (i) => i == 1
   isLower:   (i) => i == @index.length - 3

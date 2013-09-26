@@ -196,11 +196,10 @@ class Annotator():
 
         frame = self.driver.find_element_by_class_name('annotator-frame')
         collapsed = 'annotator-collapsed' in frame.get_attribute('class')
+        self.driver.switch_to_frame(frame)
         if collapsed:
-            tb = self.driver.find_element_by_class_name("annotator-toolbar")
-            tb.find_element_by_css_selector('li > a').click()
+            self.driver.find_element_by_css_selector("div.tri").click()
             time.sleep(0.5)
-        self.driver.switch_to_frame(frame.find_element_by_tag_name('iframe'))
 
     def __exit__(self, typ, value, traceback):
         count = self.g_state[self.driver]

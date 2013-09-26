@@ -8,10 +8,13 @@ yepnope([
     nope: ${inject},
     complete: function () {
       window.annotator = null;
-      var bootstrap = [
+      var app = ${app}
+        , bootstrap = [
           'if (!window.annotator) {',
-          '  klass = ${role} === "host" ? Annotator.Host : Annotator.Guest;',
-          '  annotator = new klass(document.body, ${options});',
+          '  window.annotator = new Annotator.Host(document.body, {',
+          '    /* @@ reflect routes with crossroads.js?? */',
+          '    app: "' + app + '"',
+          '  });',
           '  window.Annotator.noConflict().$.noConflict(true);',
           '}'
         ].join('\n')
