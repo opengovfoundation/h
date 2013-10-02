@@ -124,7 +124,7 @@ class Annotator.Guest extends Annotator
             @panel?.notify method: 'back'
     this._setupMatching()
     if @strategy.name is "DOM generic"
-       @docMatcher.setRootNode @wrapper[0]
+       @domMatcher.setRootNode @wrapper[0]
     this
 
   # These methods aren't used in the iframe-hosted configuration of Annotator.
@@ -242,8 +242,8 @@ class Annotator.Guest extends Annotator
   createFakeCommentRange: ->
     posSelector =
       type: "TextPositionSelector"
-      start: @docMapper.corpus.length - 1
-      end: @docMapper.corpus.length
+      start: @domMapper.getDocLength() - 1
+      end: @domMapper.getDocLength()
 
     anchor = this.findAnchorFromPositionSelector selector: [posSelector]
     anchor.range
