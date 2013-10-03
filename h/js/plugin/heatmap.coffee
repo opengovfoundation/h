@@ -113,6 +113,14 @@ class Annotator.Plugin.Heatmap extends Annotator.Plugin
     .interpolate(d3.interpolateHcl)
     c(v).toString()
 
+  _collectPendingVirtualAnnotations: (startIndex, endIndex, results = []) ->
+    for index in [startIndex .. endIndex]
+      tasks = @annotator.virtualAnchors[index]
+      if tasks?
+        for task in tasks when not task.done
+          results.push task.annotation
+    results
+
   _update: =>
     wrapper = @annotator.wrapper
     highlights = wrapper.find('.annotator-hl')
@@ -121,6 +129,19 @@ class Annotator.Plugin.Heatmap extends Annotator.Plugin
     # Keep track of buckets of annotations above and below the viewport
     above = []
     below = []
+
+    # Are we using virtual anchoring?
+    if @annotator.virtualAnchoring
+      # Get the page numbers
+      mapper = @annotator.domMapper
+      firstPage = 0
+      currentPage = mapper.getPageIndex()
+      lastPage = mapper.getPages() - 1
+
+      # Collect the pending virtual anchors from above and below
+      this._collectPendingVirtualAnnotations 0, currentPage-1, above
+      this._collectPendingVirtualAnnotations currentPage+1, lastPage, below
+
     comments = []
 
     # Construct control points for the heatmap highlights
