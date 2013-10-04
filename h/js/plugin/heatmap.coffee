@@ -121,11 +121,11 @@ class Annotator.Plugin.Heatmap extends Annotator.Plugin
         $.merge results, (task.annotation for task in tasks when not task.target.physicalAnchor?)
     results
 
-  _scrollTo: (element, up) ->
+  _scrollTo: (where, up) ->
     wrapper = @annotator.wrapper
     defaultView = wrapper[0].ownerDocument.defaultView
     pad = defaultView.innerHeight * .2
-    element?.scrollintoview
+    where?.scrollintoview
       complete: ->
         if this.parentNode is this.ownerDocument
           scrollable = $(this.ownerDocument.body)
@@ -135,8 +135,9 @@ class Annotator.Plugin.Heatmap extends Annotator.Plugin
         correction = pad * (if up then -1 else +1)
         scrollable.stop().animate {scrollTop: top + correction}, 300
 
-  _scrollUpTo: (element) -> this._scrollTo element, true
-  _scrollDownTo: (element) -> this._scrollTo element, false
+  _scrollUpTo: (where) -> this._scrollTo where, true
+
+  _scrollDownTo: (where) -> this._scrollTo where, false
 
   _update: =>
     wrapper = @annotator.wrapper
@@ -392,7 +393,7 @@ class Annotator.Plugin.Heatmap extends Annotator.Plugin
           , {start: 0, next: null}
           target = next.target[0] # This is where we want to go
           if target.physicalAnchor? # Is this rendered?
-            hl = target.physicalAnchor.highlight
+            hl = target.physicalAnchor.highlights
             this._scrollUpTo $(hl)
           else # Not rendered yet
             anchor = target.virtualAnchor
@@ -426,7 +427,7 @@ class Annotator.Plugin.Heatmap extends Annotator.Plugin
           , {start: @annotator.domMapper.getDocLength(), next: null}
           target = next.target[0] # This is where we want to go
           if target.physicalAnchor? # Is this rendered?
-            hl = target.physicalAnchor.highlight
+            hl = target.physicalAnchor.highlights
             this._scrollDownTo $(hl)
           else # Not rendered yet
             anchor = target.virtualAnchor
@@ -463,7 +464,7 @@ class Annotator.Plugin.Heatmap extends Annotator.Plugin
       if @pendingScroll? and task.target is @pendingScroll
         # The wanted annotation has been anchored.
         delete @pendingScroll
-        hl = task.target.physicalAnchor.highlight
+        hl = task.target.physicalAnchor.highlights
         this._scrollDownTo $(hl)
 
   _fillDynamicBucket: =>
