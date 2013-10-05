@@ -29,13 +29,23 @@ class Annotator.Guest extends Annotator
 
     delete @options.app
 
+    forbiddenTargetFields = [ 'virtualAnchor', 'physicalAnchor' ]
+    formatTarget = (target) ->
+      formatted = {}
+      for k, v of target when forbiddenTargetFields.indexOf(k) is -1
+        formatted[k] = v
+      formatted
+
     this.addPlugin 'Bridge',
       formatter: (annotation) =>
         formatted = {}
         if annotation.document?
           formatted['uri'] = @plugins.Document.uri()
         for k, v of annotation when k isnt 'highlights'
-          formatted[k] = v
+          formatted[k] = if k is "target"
+            (formatTarget t for t in v)
+          else
+            v
         formatted
       onConnect: (source, origin, scope) =>
         # Unfortunately, jschannel chokes on chrome-extension: origins
