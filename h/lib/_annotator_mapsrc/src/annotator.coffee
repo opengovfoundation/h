@@ -19,7 +19,10 @@ util =
     Math.max.apply(Math, all)
 
   mousePosition: (e, offsetEl) ->
-    offset = $(offsetEl).position()
+    # If the offset element is not a positioning root use its offset parent
+    unless $(offsetEl).css('position') in ['absolute', 'fixed', 'relative']
+      offsetEl = $(offsetEl).offsetParent()[0]
+    offset = $(offsetEl).offset()
     {
       top:  e.pageY - offset.top,
       left: e.pageX - offset.left
@@ -400,9 +403,11 @@ class Annotator extends Delegator
       content = @domMapper.getContentForCharRange selector.start, selector.end
       currentQuote = this.normalizeString content
       if currentQuote isnt savedQuote
-        console.log "Could not apply position selector to current document \
-          because the quote has changed. (Saved quote is '#{savedQuote}'. \
-          Current quote is '#{currentQuote}'.)"
+        console.log "Could not apply position selector" +
+          " [#{selector.start}:#{selector.end}] to current document," +
+          " because the quote has changed." +
+          "(Saved quote is '#{savedQuote}'." +
+          " Current quote is '#{currentQuote}'.)"
         return null
       else
 #        console.log "Saved quote matches."
@@ -416,6 +421,7 @@ class Annotator extends Delegator
     normalizedRange = browserRange.normalize @wrapper[0]
     range: normalizedRange
     quote: savedQuote
+
 
   findAnchorWithTwoPhaseFuzzyMatching: (target) ->
     # Fetch the quote and the context
@@ -510,10 +516,17 @@ class Annotator extends Delegator
 
     anchor
 
+  findImageAnchor: (target, text) ->
+    selector = this.findSelector target.selector, "ShapeSelector"
+    unless selector? then return null
+
+    if @plugins['AnnotoriousImagePlugin']
+      @plugins['AnnotoriousImagePlugin'].addAnnotation(selector, text)
+
   # Try to find the right anchoring point for a given target
   #
   # Returns a normalized range if succeeded, null otherwise
-  findAnchor: (target) ->
+  findTextAnchor: (target) ->
     unless target?
       throw new Error "Trying to find anchor for null target!"
 #    console.log "Trying to find anchor for target: "
@@ -572,7 +585,12 @@ class Annotator extends Delegator
   setupAnnotation: (annotation) ->
     root = @wrapper[0]
     ranges = annotation.ranges or @selectedRanges or []
+    if @selectedShape?
+      annotation.target = [@selectedShape]
 
+      unless annotation.target?
+        throw new Error "Can not run setupAnnotation(). No target or selection available."
+      return annotation
     # Upgrade format from v1.2.6 and earlier
     if annotation.ranges? then delete annotation.ranges
 
@@ -586,7 +604,7 @@ class Annotator extends Delegator
 
     for t in annotation.target
       try
-        {anchor, error} = this.findAnchor t
+        {anchor, error} = this.findTextAnchor t
         if error instanceof Range.RangeError
           this.publish('rangeNormalizeFail', [annotation, error.range, error])
         if anchor?
@@ -596,8 +614,10 @@ class Annotator extends Delegator
           normedRanges.push anchor.range
           annotation.quote.push t.quote
         else
-          console.log "Could not find anchor target for annotation '" +
+          console.log "Could not find anchor text target for annotation '" +
               annotation.id + "'."
+          anchor = this.findImageAnchor t, annotation.text
+          console.log anchor
       catch exception
         if exception.stack? then console.log exception.stack
         console.log exception.message
