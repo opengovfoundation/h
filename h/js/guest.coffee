@@ -264,7 +264,11 @@ class Annotator.Guest extends Annotator
   # Override for setupAnnotation, to handle comments
   setupAnnotation: (annotation) ->
     annotation = super # Set up annotation as usual
-    if this.isComment annotation then @comments.push annotation
+    # Temporarily put all of them into comments
+    hasSelector = this.findSelector annotation.target[0].selector, "ShapeSelector"
+    console.log hasSelector
+    if this.isComment(annotation) or hasSelector
+      @comments.push annotation
     annotation
 
   # Open the sidebar
