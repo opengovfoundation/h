@@ -13,6 +13,7 @@ class Annotator.Guest extends Annotator
   # Plugin configuration
   options:
     Document: {}
+    AnnotoriousImagePlugin: {}
 
   # Internal state
   comments: null
@@ -59,6 +60,9 @@ class Annotator.Guest extends Annotator
     for own name, opts of @options
       if not @plugins[name]
         this.addPlugin(name, opts)
+
+    #   annotorious.mediatypes.image.ImageAnnotator()
+    # annotorious.mediatypes.image.ImageModule()
 
     # Scan the document text with the DOM Text libraries
     this.scanDocument "Annotator initialized"
@@ -283,7 +287,7 @@ class Annotator.Guest extends Annotator
     - Don't fire annotationCreated events: that's the job of the sidebar
     - Save the event for retriggering if login interrupts the flow
     """
-    event?.preventDefault()
+    event?.preventDefault?()
 
     # Save the event for restarting edit
     @event = event
