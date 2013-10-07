@@ -23,6 +23,8 @@ class Annotator.Guest extends Annotator
     super
     delete @options.noScan
 
+    @role = "guest"
+
     @frame = $('<div></div>')
     .appendTo(@wrapper)
     .addClass('annotator-frame annotator-outer annotator-collapsed')
