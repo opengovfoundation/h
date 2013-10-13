@@ -7207,6 +7207,9 @@ annotorious.hypo.ImagePlugin = function(a, b) {
   c = new annotorious.plugins.selection.RectDragSelector;
   c.init(this._editCanvas, this);
   this._selectors.push(c);
+  c = new annotorious.plugins.PolygonSelector.Selector;
+  c.init(this, this._editCanvas);
+  this._selectors.push(c);
   this._currentSelector = c;
   this._viewer = new annotorious.mediatypes.image.Viewer(this._viewCanvas, this);
   var d = this;
@@ -7229,7 +7232,7 @@ annotorious.hypo.ImagePlugin = function(a, b) {
   });
   this._eventBroker.addHandler(annotorious.events.EventType.SELECTION_COMPLETED, function(c) {
     console.log(c.shape);
-    b.selectedShape = {selector:[{type:"ShapeSelector", shapeType:"rect", geometry:c.shape.geometry, source:a.src}]};
+    b.selectedShape = {selector:[{type:"ShapeSelector", shapeType:c.shape.type, geometry:c.shape.geometry, source:a.src}]};
     b.onAdderClick(c);
     d.addAnnotation({src:a.src, shapes:[c.shape]});
     d.stopSelection()
@@ -7248,7 +7251,7 @@ window.Annotator.Plugin.AnnotoriousImagePlugin = function() {
     var d = {text:c};
     d.source = a.source;
     var e = null;
-    "rect" == a.shapeType && (e = new annotorious.shape.geom.Rectangle(a.geometry.x, a.geometry.y, a.geometry.width, a.geometry.height));
+    "rect" == a.shapeType ? e = new annotorious.shape.geom.Rectangle(a.geometry.x, a.geometry.y, a.geometry.width, a.geometry.height) : "polygon" == a.shapeType && (e = new annotorious.shape.geom.Polygon(a.geometry.points));
     e = new annotorious.shape.Shape(a.shapeType, e, annotorious.shape.Units.FRACTION);
     d.shapes = [e];
     this.handlers[d.source].addAnnotation(d)
