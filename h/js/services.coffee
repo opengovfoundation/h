@@ -289,6 +289,7 @@ class Hypothesis extends Annotator
   buildReplyList: (annotations=[]) =>
     $filter = @element.injector().get '$filter'
     for annotation in annotations
+      unless annotation? then continue
       thread = @threading.getContainer annotation.id
       children = (r.message for r in (thread.children or []))
       annotation.reply_list = children.sort(@sortAnnotations).reverse()
