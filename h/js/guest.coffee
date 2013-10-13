@@ -142,11 +142,11 @@ class Annotator.Guest extends Annotator
 
   _setupWrapper: ->
     @wrapper = @element
-    .on 'click', =>
-      unless @ignoreMouseup or @noBack
-        setTimeout =>
-          unless @selectedRanges?.length
-            @panel?.notify method: 'back'
+    #.on 'click', =>
+    #  unless @ignoreMouseup or @noBack
+    #    setTimeout =>
+    #      unless @selectedRanges?.length
+    #        @panel?.notify method: 'back'
     this._setupMatching()
     @domMatcher.setRootNode @wrapper[0]
     this
@@ -266,7 +266,6 @@ class Annotator.Guest extends Annotator
     annotation = super # Set up annotation as usual
     # Temporarily put all of them into comments
     hasSelector = this.findSelector annotation.target[0].selector, "ShapeSelector"
-    console.log hasSelector
     if this.isComment(annotation) or hasSelector
       @comments.push annotation
     annotation
