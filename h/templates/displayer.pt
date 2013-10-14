@@ -69,6 +69,14 @@
                     |
                     <a href="{{root.uri}}">{{root.title}}</a>
             </div>
+
+            <!-- Image annotation -->
+            <span ng-show="root.image_src">
+              <div class="excerpt">
+                  <center id="image-annotation-container"></center>
+              </div>
+            </span>
+
             <div class="yui3-u-1"
                  ng-class="(root.quote.length) && '' || ''"
                  ng-show="annotation.text || annotation.replies.length || annotation.tags.length">

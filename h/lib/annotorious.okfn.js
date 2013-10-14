@@ -7243,8 +7243,9 @@ annotorious.hypo.ImagePlugin = function(a, b) {
   })
 };
 window.Annotator.Plugin.AnnotoriousImagePlugin = function() {
-  function a(a) {
+  function a(a, c) {
     this._el = a;
+    this.options = c;
     this.handlers = {}
   }
   a.prototype.addAnnotation = function(a, c) {
@@ -7256,10 +7257,19 @@ window.Annotator.Plugin.AnnotoriousImagePlugin = function() {
     d.shapes = [e];
     this.handlers[d.source].addAnnotation(d)
   };
+  a.prototype.addImage = function(a, c, d) {
+    console.log(this.handlers);
+    this._el.getElementsByTagName("img");
+    c = new annotorious.hypo.ImagePlugin(a, c);
+    d ? this.handlers[d] = c : this.handlers[a.src] = c
+  };
   a.prototype.pluginInit = function() {
-    var a = this._el.getElementsByTagName("img"), c = this;
+    var a = this._el.getElementsByTagName("img");
+    console.log(a);
+    var c = this;
     goog.array.forEach(a, function(a) {
       var b = new annotorious.hypo.ImagePlugin(a, c.annotator);
+      c.options.read_only && (b._selectionEnabled = !1);
       c.handlers[a.src] = b
     })
   };
