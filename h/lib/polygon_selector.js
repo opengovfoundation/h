@@ -276,10 +276,6 @@ annotorious.plugins.PolygonSelector.Selector.prototype.drawShape = function(g2d,
   g2d.strokeStyle = '#000000';
  
   var outline = annotorious.geometry.expand(shape, 1.2).geometry.points;
-  console.log(outline);
-  console.log(shape);
-  console.log('-------------');
-  console.log(outline);
   g2d.beginPath();
   g2d.moveTo(outline[0].x, outline[0].y);
   for (var i=1; i<outline.length; i++) {
