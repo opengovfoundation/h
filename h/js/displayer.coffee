@@ -134,6 +134,18 @@ class Displayer
     if $scope.annotation.referrers?
       $scope.manage_new_data $scope.annotation.referrers, 'past'
 
+    # Image annotation support
+    if $scope.root.image_src
+      # Add the image tag, because the annotorious does not handle ng-src well
+      container = $('center#image-annotation-container')
+      image = '<img src="' + $scope.root.image_src + '" width="300px" height="300px"/>'
+      container.append(image)
+
+      $scope.imagePlugin = new Annotator.Plugin.AnnotoriousImagePlugin($element[0], {read_only: true})
+      $scope.imagePlugin.pluginInit()
+
+      $scope.imagePlugin.addAnnotation $scope.annotation.target[0].selector[0], $scope.annotation.text
+
     document.init_annotation = null
     $scope.open()
 

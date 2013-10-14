@@ -206,6 +206,16 @@ class Annotation(BaseResource, dict):
         # Create nested list form
         return self._nestlist(childTable.get(self['id']), childTable)
 
+    @property
+    def image_src(self):
+        if not 'target' in self: return ''
+        image_src = ''
+        for target in self['target']:
+            for selector in target['selector']:
+                if selector['type'] == 'ShapeSelector':
+                    image_src = selector['source']
+
+        return image_src
 
 class Streamer(BaseResource, dict):
     pass
