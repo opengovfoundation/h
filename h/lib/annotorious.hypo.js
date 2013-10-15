@@ -7108,6 +7108,7 @@ annotorious.mediatypes.image.ImageAnnotator.prototype.hideAnnotations = function
   goog.style.showElement(this._viewCanvas, !1)
 };
 annotorious.mediatypes.image.ImageAnnotator.prototype.hideSelectionWidget = function() {
+  console.log("hideSelectionWidget");
   this._selectionEnabled = !1;
   this._hint && (this._hint.destroy(), delete this._hint)
 };
@@ -7136,6 +7137,7 @@ annotorious.mediatypes.image.ImageAnnotator.prototype.showAnnotations = function
 };
 annotorious.mediatypes.image.ImageAnnotator.prototype.showSelectionWidget = function() {
   this._selectionEnabled = !0;
+  console.log("showSelectionWidget");
   this._hint || (this._hint = new annotorious.Hint(this, this.element))
 };
 annotorious.mediatypes.image.ImageAnnotator.prototype.stopSelection = function(a) {
@@ -7151,96 +7153,107 @@ annotorious.mediatypes.image.ImageAnnotator.prototype.addSelector = annotorious.
 annotorious.mediatypes.image.ImageAnnotator.prototype.fireEvent = annotorious.mediatypes.image.ImageAnnotator.prototype.fireEvent;
 annotorious.mediatypes.image.ImageAnnotator.prototype.setCurrentSelector = annotorious.mediatypes.image.ImageAnnotator.prototype.setCurrentSelector;
 annotorious.mediatypes.image.ImageAnnotator.prototype.toItemCoordinates = annotorious.mediatypes.image.ImageAnnotator.prototype.toItemCoordinates;
-var humanEvents = annotorious.events.ui.EventType;
 annotorious.hypo = {};
+annotorious.hypo.Popup = function(a, b, c) {
+  this.element = goog.soy.renderAsElement(annotorious.templates.popup);
+  this._text = goog.dom.query(".annotorious-popup-text", this.element)[0];
+  this._buttons = goog.dom.query(".annotorious-popup-buttons", this.element)[0];
+  this._image = a;
+  this._hypoGuest = b;
+  this._eventBroker = c;
+  this._annotator = null;
+  var d = this;
+  annotorious.events.ui.hasMouse && (goog.events.listen(this.element, goog.events.EventType.MOUSEOVER, function() {
+    window.clearTimeout(d._buttonHideTimer);
+    0.9 > goog.style.getStyle(d._buttons, "opacity") && goog.style.setOpacity(d._buttons, 0.9);
+    d.clearHideTimer()
+  }), goog.events.listen(this.element, goog.events.EventType.MOUSEOUT, function() {
+    goog.style.setOpacity(d._buttons, 0);
+    d.startHideTimer()
+  }));
+  goog.style.setOpacity(this._buttons, 0);
+  goog.style.setOpacity(this.element, 0);
+  goog.style.setStyle(this.element, "pointer-events", "none")
+};
+annotorious.hypo.Popup.prototype.show = function(a, b) {
+  this.clearHideTimer();
+  b && this.setPosition(b);
+  a && this.setAnnotation(a);
+  this._buttonHideTimer && window.clearTimeout(this._buttonHideTimer);
+  goog.style.setOpacity(this._buttons, 0.9);
+  if(annotorious.events.ui.hasMouse) {
+    var c = this;
+    this._buttonHideTimer = window.setTimeout(function() {
+      goog.style.setOpacity(c._buttons, 0)
+    }, 1E3)
+  }
+  goog.style.setOpacity(this.element, 0.9);
+  goog.style.setStyle(this.element, "pointer-events", "auto")
+};
+annotorious.hypo.Popup.prototype.startHideTimer = function() {
+  this._cancelHide = !1;
+  if(!this._popupHideTimer) {
+    var a = this;
+    this._popupHideTimer = window.setTimeout(function() {
+      a._annotator.fireEvent(annotorious.events.EventType.BEFORE_POPUP_HIDE, a);
+      a._cancelHide || (goog.style.setOpacity(a.element, 0), goog.style.setStyle(a.element, "pointer-events", "none"), goog.style.setOpacity(a._buttons, 0.9), delete a._popupHideTimer)
+    }, 150)
+  }
+};
+annotorious.hypo.Popup.prototype.clearHideTimer = function() {
+  this._cancelHide = !0;
+  this._popupHideTimer && (window.clearTimeout(this._popupHideTimer), delete this._popupHideTimer)
+};
+annotorious.hypo.Popup.prototype.addAnnotator = function(a) {
+  this._annotator = a;
+  goog.dom.appendChild(this._annotator.element, this.element);
+  var b = this;
+  this._annotator.addHandler(annotorious.events.EventType.MOUSE_OUT_OF_ANNOTATABLE_ITEM, function() {
+    b.startHideTimer()
+  })
+};
+annotorious.hypo.Popup.prototype.setPosition = function(a) {
+  goog.style.setPosition(this.element, new goog.math.Coordinate(a.x, a.y))
+};
+annotorious.hypo.Popup.prototype.setAnnotation = function(a) {
+  this._currentAnnotation = a;
+  this._text.innerHTML = a.text ? a.text.replace(/\n/g, "<br/>") : '<span class="annotorious-popup-empty">No comment</span>';
+  goog.style.showElement(this._buttons, !1)
+};
+var humanEvents = annotorious.events.ui.EventType;
+window.annotorious || (window.annotorious = {});
+window.annotorious.plugin || (window.annotorious.plugin = {});
 annotorious.hypo.ImagePlugin = function(a, b) {
-  annotorious.hypo.ImagePlugin.prototype._transferStyles = function(a, b) {
-    return annotorious.mediatypes.image.ImageAnnotator.prototype._transferStyles(a, b)
-  };
-  annotorious.hypo.ImagePlugin.prototype.addHandler = function(a, b) {
-    this._eventBroker.addHandler(a, b)
-  };
-  annotorious.hypo.ImagePlugin.prototype.addAnnotation = function(a, b) {
-    this._viewer.addAnnotation(a, b)
-  };
-  annotorious.hypo.ImagePlugin.prototype.fireEvent = function(a, b) {
-    return this._eventBroker.fireEvent(a, b)
-  };
-  annotorious.hypo.ImagePlugin.prototype.fromItemCoordinates = function(a) {
-    var b = goog.style.getSize(this._image);
-    return{x:a.x * b.width, y:a.y * b.height}
-  };
-  annotorious.hypo.ImagePlugin.prototype.toItemCoordinates = function(a) {
-    var b = goog.style.getSize(this._image);
-    return{x:a.x / b.width, y:a.y / b.height}
-  };
-  annotorious.hypo.ImagePlugin.prototype.getAvailableSelectors = function() {
-    return this._selectors
-  };
-  annotorious.hypo.ImagePlugin.prototype.getAnnotationsAt = function(a, b) {
-    return goog.array.clone(this._viewer.getAnnotationsAt(a, b))
-  };
-  annotorious.hypo.ImagePlugin.prototype.stopSelection = function(a) {
-    annotorious.events.ui.hasMouse && goog.style.showElement(this._editCanvas, !1);
-    this._currentSelector.stopSelection();
-    a && this._viewer.addAnnotation(a)
-  };
   this._image = a;
   this._eventBroker = new annotorious.events.EventBroker;
-  this._selectors = [];
-  this._selectionEnabled = !0;
-  this.element = goog.dom.createDom("div", "annotorious-annotationlayer");
-  goog.style.setStyle(this.element, "position", "relative");
-  goog.style.setStyle(this.element, "display", "inline-block");
-  this._transferStyles(a, this.element);
-  var c = goog.style.getBounds(a);
-  goog.style.setSize(this.element, c.width, c.height);
-  goog.dom.replaceNode(this.element, a);
-  goog.dom.appendChild(this.element, a);
-  this._viewCanvas = goog.soy.renderAsElement(annotorious.templates.image.canvas, {width:c.width, height:c.height});
-  annotorious.events.ui.hasMouse && goog.dom.classes.add(this._viewCanvas, "annotorious-item-unfocus");
-  goog.dom.appendChild(this.element, this._viewCanvas);
-  this._editCanvas = goog.soy.renderAsElement(annotorious.templates.image.canvas, {width:c.width, height:c.height});
-  annotorious.events.ui.hasMouse && goog.style.showElement(this._editCanvas, !1);
-  goog.dom.appendChild(this.element, this._editCanvas);
-  this.popup = new annotorious.Popup(this);
-  c = new annotorious.plugins.selection.RectDragSelector;
-  c.init(this._editCanvas, this);
-  this._selectors.push(c);
-  c = new annotorious.plugins.PolygonSelector.Selector;
-  c.init(this, this._editCanvas);
-  this._selectors.push(c);
-  this._currentSelector = c;
-  this._viewer = new annotorious.mediatypes.image.Viewer(this._viewCanvas, this);
-  var d = this;
-  annotorious.events.ui.hasMouse && (goog.events.listen(this.element, annotorious.events.ui.EventType.OVER, function(a) {
-    a = a.relatedTarget;
-    if(!a || !goog.dom.contains(d.element, a)) {
-      d._eventBroker.fireEvent(annotorious.events.EventType.MOUSE_OVER_ANNOTATABLE_ITEM), goog.dom.classes.addRemove(d._viewCanvas, "annotorious-item-unfocus", "annotorious-item-focus")
-    }
-  }), goog.events.listen(this.element, annotorious.events.ui.EventType.OUT, function(a) {
-    a = a.relatedTarget;
-    if(!a || !goog.dom.contains(d.element, a)) {
-      d._eventBroker.fireEvent(annotorious.events.EventType.MOUSE_OUT_OF_ANNOTATABLE_ITEM), goog.dom.classes.addRemove(d._viewCanvas, "annotorious-item-focus", "annotorious-item-unfocus")
-    }
-  }));
-  var e = annotorious.events.ui.hasTouch ? this._editCanvas : this._viewCanvas;
-  goog.events.listen(e, annotorious.events.ui.EventType.DOWN, function(a) {
-    a = annotorious.events.ui.sanitizeCoordinates(a, e);
-    d._viewer.highlightAnnotation(void 0);
-    d._selectionEnabled ? (goog.style.showElement(d._editCanvas, !0), d._currentSelector.startSelection(a.x, a.y)) : (a = d._viewer.getAnnotationsAt(a.x, a.y), 0 < a.length && d._viewer.highlightAnnotation(a[0]))
+  this._guest = b;
+  this._popup = new annotorious.hypo.Popup(a, this._guest, this._eventBroker);
+  this._imageAnnotator = new annotorious.mediatypes.image.ImageAnnotator(a, this._popup);
+  this._popup.addAnnotator(this._imageAnnotator);
+  var c = new annotorious.plugins.PolygonSelector.Selector;
+  c.init(this._imageAnnotator, this._imageAnnotator._editCanvas);
+  this._imageAnnotator._selectors.push(c);
+  this._imageAnnotator._currentSelector = c;
+  var d = this, c = this._imageAnnotator._eventBroker._handlers[annotorious.events.EventType.SELECTION_CANCELED][0];
+  this._imageAnnotator._eventBroker.removeHandler(annotorious.events.EventType.SELECTION_COMPLETED, this._imageAnnotator._eventBroker._handlers[annotorious.events.EventType.SELECTION_COMPLETED][0]);
+  this._imageAnnotator._eventBroker.removeHandler(annotorious.events.EventType.SELECTION_CANCELED, c);
+  this._imageAnnotator._eventBroker.addHandler(annotorious.events.EventType.SELECTION_COMPLETED, function(a) {
+    d._guest.selectedShape = {selector:[{type:"ShapeSelector", shapeType:a.shape.type, geometry:a.shape.geometry, source:d._imageAnnotator._image.src}]};
+    d._guest.onAdderClick(a);
+    d._imageAnnotator.addAnnotation({src:d._imageAnnotator._image.src, shapes:[a.shape]});
+    d._imageAnnotator.stopSelection()
   });
-  this._eventBroker.addHandler(annotorious.events.EventType.SELECTION_COMPLETED, function(c) {
-    console.log(c.shape);
-    b.selectedShape = {selector:[{type:"ShapeSelector", shapeType:c.shape.type, geometry:c.shape.geometry, source:a.src}]};
-    b.onAdderClick(c);
-    d.addAnnotation({src:a.src, shapes:[c.shape]});
-    d.stopSelection()
+  this._imageAnnotator._eventBroker.addHandler(annotorious.events.EventType.SELECTION_CANCELED, function() {
+    annotorious.events.ui.hasMouse && goog.style.showElement(d._imageAnnotator._editCanvas, !1);
+    d._imageAnnotator._currentSelector.stopSelection()
   });
-  this._eventBroker.addHandler(annotorious.events.EventType.SELECTION_CANCELED, function() {
-    annotorious.events.ui.hasMouse && goog.style.showElement(d._editCanvas, !1);
-    d._currentSelector.stopSelection()
-  })
+  annotorious.hypo.ImagePlugin.prototype.addAnnotation = function(a) {
+    this._imageAnnotator.addAnnotation(a)
+  };
+  annotorious.hypo.ImagePlugin.prototype.disableSelection = function() {
+    this._imageAnnotator._selectionEnabled = !1;
+    this._imageAnnotator._hint = null
+  }
 };
 window.Annotator.Plugin.AnnotoriousImagePlugin = function() {
   function a(a, c) {
@@ -7257,19 +7270,11 @@ window.Annotator.Plugin.AnnotoriousImagePlugin = function() {
     d.shapes = [e];
     this.handlers[d.source].addAnnotation(d)
   };
-  a.prototype.addImage = function(a, c, d) {
-    console.log(this.handlers);
-    this._el.getElementsByTagName("img");
-    c = new annotorious.hypo.ImagePlugin(a, c);
-    d ? this.handlers[d] = c : this.handlers[a.src] = c
-  };
   a.prototype.pluginInit = function() {
-    var a = this._el.getElementsByTagName("img");
-    console.log(a);
-    var c = this;
+    var a = this._el.getElementsByTagName("img"), c = this;
     goog.array.forEach(a, function(a) {
       var b = new annotorious.hypo.ImagePlugin(a, c.annotator);
-      c.options.read_only && (b._selectionEnabled = !1);
+      c.options.read_only && b.disableSelection();
       c.handlers[a.src] = b
     })
   };
