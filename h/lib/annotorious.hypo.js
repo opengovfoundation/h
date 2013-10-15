@@ -7108,7 +7108,6 @@ annotorious.mediatypes.image.ImageAnnotator.prototype.hideAnnotations = function
   goog.style.showElement(this._viewCanvas, !1)
 };
 annotorious.mediatypes.image.ImageAnnotator.prototype.hideSelectionWidget = function() {
-  console.log("hideSelectionWidget");
   this._selectionEnabled = !1;
   this._hint && (this._hint.destroy(), delete this._hint)
 };
@@ -7137,7 +7136,6 @@ annotorious.mediatypes.image.ImageAnnotator.prototype.showAnnotations = function
 };
 annotorious.mediatypes.image.ImageAnnotator.prototype.showSelectionWidget = function() {
   this._selectionEnabled = !0;
-  console.log("showSelectionWidget");
   this._hint || (this._hint = new annotorious.Hint(this, this.element))
 };
 annotorious.mediatypes.image.ImageAnnotator.prototype.stopSelection = function(a) {
@@ -7230,7 +7228,7 @@ annotorious.hypo.ImagePlugin = function(a, b) {
   this._popup = new annotorious.hypo.Popup(a, this._guest, this._eventBroker);
   this._imageAnnotator = new annotorious.mediatypes.image.ImageAnnotator(a, this._popup);
   this._popup.addAnnotator(this._imageAnnotator);
-  var c = new annotorious.plugins.PolygonSelector.Selector;
+  var c = new annotorious.plugin.PolygonSelector.Selector;
   c.init(this._imageAnnotator, this._imageAnnotator._editCanvas);
   this._imageAnnotator._selectors.push(c);
   this._imageAnnotator._currentSelector = c;
