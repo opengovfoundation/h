@@ -144,7 +144,7 @@ class Displayer
       $scope.imagePlugin = new Annotator.Plugin.AnnotoriousImagePlugin($element[0], {read_only: true})
       $scope.imagePlugin.pluginInit()
 
-      $scope.imagePlugin.addAnnotation $scope.annotation.target[0].selector[0], $scope.annotation.text
+      $scope.imagePlugin.addAnnotation $scope.annotation.target[0].selector[0], $scope.annotation
 
     document.init_annotation = null
     $scope.open()

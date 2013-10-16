@@ -7250,7 +7250,8 @@ annotorious.hypo.ImagePlugin = function(a, b) {
     d._imageAnnotator._currentSelector.stopSelection()
   });
   annotorious.hypo.ImagePlugin.prototype.addAnnotation = function(a) {
-    this._imageAnnotator.addAnnotation(a)
+    this._imageAnnotator.addAnnotation(a);
+    this._annotations[a.id] = a
   };
   annotorious.hypo.ImagePlugin.prototype.updateAnnotation = function(a, b) {
     var c = this._annotations[a];
@@ -7269,7 +7270,7 @@ window.Annotator.Plugin.AnnotoriousImagePlugin = function() {
     this.handlers = {}
   }
   a.prototype.addAnnotation = function(a, c) {
-    var d = {text:c};
+    var d = {text:c.text, id:c.id};
     d.source = a.source;
     var e = null;
     "rect" == a.shapeType ? e = new annotorious.shape.geom.Rectangle(a.geometry.x, a.geometry.y, a.geometry.width, a.geometry.height) : "polygon" == a.shapeType && (e = new annotorious.shape.geom.Polygon(a.geometry.points));

@@ -7,7 +7,7 @@
 ** Dual licensed under the MIT and GPLv3 licenses.
 ** https://github.com/okfn/annotator/blob/master/LICENSE
 **
-** Built at: 2013-10-13 19:36:05Z
+** Built at: 2013-10-16 14:10:58Z
 */
 
 
@@ -1170,17 +1170,14 @@
       return anchor;
     };
 
-    Annotator.prototype.findImageAnchor = function(target, text) {
+    Annotator.prototype.findImageAnchor = function(target, annotation) {
       var selector;
-      console.log('findImageAnchor');
-      console.log(target);
-      console.log(text);
       selector = this.findSelector(target.selector, "ShapeSelector");
       if (selector == null) {
         return null;
       }
       if (this.plugins['AnnotoriousImagePlugin']) {
-        return this.plugins['AnnotoriousImagePlugin'].addAnnotation(selector, text);
+        return this.plugins['AnnotoriousImagePlugin'].addAnnotation(selector, annotation);
       }
     };
 
@@ -1213,12 +1210,9 @@
 
     Annotator.prototype.setupAnnotation = function(annotation) {
       var anchor, error, exception, normed, normedRanges, r, ranges, root, t, _k, _l, _len2, _len3, _ref1, _ref2;
-      console.log('setupAnnotation');
       root = this.wrapper[0];
       ranges = annotation.ranges || this.selectedRanges || [];
       if (this.selectedShape != null) {
-        console.log('hasSelectedshape');
-        console.log(this.selectedShape);
         annotation.target = [this.selectedShape];
         if (annotation.target == null) {
           throw new Error("Can not run setupAnnotation(). No target or selection available.");
@@ -1258,7 +1252,7 @@
             annotation.quote.push(t.quote);
           } else {
             console.log("Could not find anchor text target for annotation '" + annotation.id + "'.");
-            anchor = this.findImageAnchor(t, annotation.text);
+            anchor = this.findImageAnchor(t, annotation);
             console.log(anchor);
           }
         } catch (_error) {
@@ -1302,9 +1296,6 @@
           window.DomTextMapper.changed(child.parentNode, "removed hilite (annotation deleted)");
         }
       }
-      console.log('deleteAnnotation');
-      console.log('publish annotationDeleted');
-      console.log(annotation);
       this.publish('annotationDeleted', [annotation]);
       return annotation;
     };
@@ -1516,7 +1507,6 @@
       };
       cancel = function() {
         cleanup();
-        console.log('annotator - cancel - deleteAnn');
         return _this.deleteAnnotation(annotation);
       };
       cleanup = function() {
