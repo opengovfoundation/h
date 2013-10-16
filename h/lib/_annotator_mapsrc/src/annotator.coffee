@@ -516,15 +516,12 @@ class Annotator extends Delegator
 
     anchor
 
-  findImageAnchor: (target, text) ->
-    console.log 'findImageAnchor'
-    console.log target
-    console.log text
+  findImageAnchor: (target, annotation) ->
     selector = this.findSelector target.selector, "ShapeSelector"
     unless selector? then return null
 
     if @plugins['AnnotoriousImagePlugin']
-      @plugins['AnnotoriousImagePlugin'].addAnnotation(selector, text)
+      @plugins['AnnotoriousImagePlugin'].addAnnotation(selector, annotation)
 
   # Try to find the right anchoring point for a given target
   #
@@ -586,12 +583,9 @@ class Annotator extends Delegator
   #
   # Returns the initialised annotation.
   setupAnnotation: (annotation) ->
-    console.log 'setupAnnotation'
     root = @wrapper[0]
     ranges = annotation.ranges or @selectedRanges or []
     if @selectedShape?
-      console.log 'hasSelectedshape'
-      console.log @selectedShape
       annotation.target = [@selectedShape]
 
       unless annotation.target?
@@ -622,7 +616,7 @@ class Annotator extends Delegator
         else
           console.log "Could not find anchor text target for annotation '" +
               annotation.id + "'."
-          anchor = this.findImageAnchor t, annotation.text
+          anchor = this.findImageAnchor t, annotation
           console.log anchor
       catch exception
         if exception.stack? then console.log exception.stack
@@ -681,9 +675,6 @@ class Annotator extends Delegator
         window.DomTextMapper.changed child.parentNode,
           "removed hilite (annotation deleted)"
 
-    console.log 'deleteAnnotation'
-    console.log 'publish annotationDeleted'
-    console.log annotation
     this.publish('annotationDeleted', [annotation])
     annotation
 
@@ -1000,7 +991,6 @@ class Annotator extends Delegator
     # Remove the highlights if the edit is cancelled
     cancel = =>
       do cleanup
-      console.log 'annotator - cancel - deleteAnn'
       this.deleteAnnotation(annotation)
 
     # Don't leak handlers at the end
