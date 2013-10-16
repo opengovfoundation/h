@@ -7264,7 +7264,7 @@ annotorious.hypo.ImagePlugin = function(a, b) {
     }
   };
   annotorious.hypo.ImagePlugin.prototype.deleteAnnotation = function(a) {
-    a.id in this._annotations && (this._imageAnnotator.removeAnnotation(this._annotations[a.id]), delete this._annotations[a.id])
+    a in this._annotations && (this._imageAnnotator.removeAnnotation(this._annotations[a]), delete this._annotations[a])
   };
   annotorious.hypo.ImagePlugin.prototype.disableSelection = function() {
     this._imageAnnotator._selectionEnabled = !1;
@@ -7287,7 +7287,8 @@ window.Annotator.Plugin.AnnotoriousImagePlugin = function() {
     this.handlers[d.source].addAnnotation(d)
   };
   a.prototype.deleteAnnotation = function(a) {
-    this.handlers[a.target[0].selector[0].source].deleteAnnotation(a)
+    var c = this.handlers[a.target[0].selector[0].source], d = null, d = "id" in a ? a.id : a.temporaryImageID;
+    c.deleteAnnotation(d, a)
   };
   a.prototype.updateAnnotation = function(a) {
     var c = this.handlers[a.target[0].selector[0].source], d = null;
@@ -7307,7 +7308,6 @@ window.Annotator.Plugin.AnnotoriousImagePlugin = function() {
       })
     });
     this.annotator.subscribe("annotationDeleted", function(a) {
-      console.log("DeleteAnnotation message");
       "target" in a && a.target.forEach(function(b) {
         "selector" in b && 0 < b.selector.length && "ShapeSelector" == b.selector[0].type && c.deleteAnnotation(a)
       })
