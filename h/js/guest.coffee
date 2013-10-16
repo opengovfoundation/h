@@ -73,9 +73,14 @@ class Annotator.Guest extends Annotator
           @plugins.Heatmap._update()
 
       # Delete imageAnnotation from the image
-      # ToDo:
+      if annotation.target?
+        for target in annotation.target
+          if target.selector?[0]?.type is "ShapeSelector"
+            @plugins.AnnotoriousImagePlugin.deleteAnnotation annotation
+            break
 
     this.subscribe 'annotationUpdated', (annotation) =>
+      # Update image annotations (important mostly for the id)
       if @plugins.AnnotoriousImagePlugin?
         if annotation.target?
           for target in annotation.target
