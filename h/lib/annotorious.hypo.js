@@ -7258,6 +7258,10 @@ annotorious.hypo.ImagePlugin = function(a, b) {
     "id" in b && a != b.id && (this._annotations[b.id] = c, delete this._annotations[a]);
     c.text = b.text
   };
+  annotorious.hypo.ImagePlugin.prototype.deleteAnnotation = function(a) {
+    this._imageAnnotator.removeAnnotation(this._annotations[a.id]);
+    delete this._annotations[a.id]
+  };
   annotorious.hypo.ImagePlugin.prototype.disableSelection = function() {
     this._imageAnnotator._selectionEnabled = !1;
     this._imageAnnotator._hint = null
@@ -7277,6 +7281,9 @@ window.Annotator.Plugin.AnnotoriousImagePlugin = function() {
     e = new annotorious.shape.Shape(a.shapeType, e, annotorious.shape.Units.FRACTION);
     d.shapes = [e];
     this.handlers[d.source].addAnnotation(d)
+  };
+  a.prototype.deleteAnnotation = function(a) {
+    this.handlers[a.target[0].selector[0].source].deleteAnnotation(a)
   };
   a.prototype.updateAnnotation = function(a) {
     var c = this.handlers[a.target[0].selector[0].source], d = null;
