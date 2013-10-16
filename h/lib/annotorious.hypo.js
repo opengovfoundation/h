@@ -7232,6 +7232,9 @@ annotorious.hypo.ImagePlugin = function(a, b) {
   var c = new annotorious.plugin.PolygonSelector.Selector;
   c.init(this._imageAnnotator, this._imageAnnotator._editCanvas);
   this._imageAnnotator._selectors.push(c);
+  c = new annotorious.plugin.FancyBoxSelector.Selector;
+  c.init(this._imageAnnotator, this._imageAnnotator._editCanvas);
+  this._imageAnnotator._selectors.push(c);
   this._imageAnnotator._currentSelector = c;
   var d = this, c = this._imageAnnotator._eventBroker._handlers[annotorious.events.EventType.SELECTION_CANCELED][0];
   this._imageAnnotator._eventBroker.removeHandler(annotorious.events.EventType.SELECTION_COMPLETED, this._imageAnnotator._eventBroker._handlers[annotorious.events.EventType.SELECTION_COMPLETED][0]);
