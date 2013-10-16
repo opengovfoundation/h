@@ -75,6 +75,14 @@ class Annotator.Guest extends Annotator
           @comments[i..i] = []
           @plugins.Heatmap._update()
 
+    this.subscribe 'annotationUpdated', (annotation) =>
+      if @plugins.AnnotoriousImagePlugin?
+        if annotation.target?
+          for target in annotation.target
+            if target.selector?[0]?.type is "ShapeSelector"
+              @plugins.AnnotoriousImagePlugin.updateAnnotation annotation
+              break
+
   _setupXDM: (options) ->
     # jschannel chokes FF and Chrome extension origins.
     if (options.origin.match /^chrome-extension:\/\//) or
@@ -301,7 +309,9 @@ class Annotator.Guest extends Annotator
 
     # Show a temporary highlight so the user can see what they selected
     # Also extract the quotation and serialize the ranges
-    annotation = this.setupAnnotation(this.createAnnotation())
+    ann = this.createAnnotation()
+    if event.temporaryImageID? then ann.temporaryImageID = event.temporaryImageID
+    annotation = this.setupAnnotation(ann)
     $(annotation.highlights).addClass('annotator-hl-temporary')
 
     # Subscribe to the editor events
