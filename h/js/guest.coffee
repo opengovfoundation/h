@@ -64,13 +64,24 @@ class Annotator.Guest extends Annotator
     # Create an array for holding the comments
     @comments = []
 
-    # Watch for deleted comments
     this.subscribe 'annotationDeleted', (annotation) =>
+      # Watch for deleted comments
       if this.isComment annotation
         i = @comments.indexOf annotation
         if i isnt -1
           @comments[i..i] = []
           @plugins.Heatmap._update()
+
+      # Delete imageAnnotation from the image
+      # ToDo:
+
+    this.subscribe 'annotationUpdated', (annotation) =>
+      if @plugins.AnnotoriousImagePlugin?
+        if annotation.target?
+          for target in annotation.target
+            if target.selector?[0]?.type is "ShapeSelector"
+              @plugins.AnnotoriousImagePlugin.updateAnnotation annotation
+              break
 
   _setupXDM: (options) ->
     channel = Channel.build options
@@ -296,7 +307,9 @@ class Annotator.Guest extends Annotator
 
     # Show a temporary highlight so the user can see what they selected
     # Also extract the quotation and serialize the ranges
-    annotation = this.setupAnnotation(this.createAnnotation())
+    ann = this.createAnnotation()
+    if event.temporaryImageID? then ann.temporaryImageID = event.temporaryImageID
+    annotation = this.setupAnnotation(ann)
     $(annotation.highlights).addClass('annotator-hl-temporary')
 
     # Subscribe to the editor events

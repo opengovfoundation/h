@@ -7225,6 +7225,7 @@ annotorious.hypo.ImagePlugin = function(a, b) {
   this._image = a;
   this._eventBroker = new annotorious.events.EventBroker;
   this._guest = b;
+  this._annotations = {};
   this._popup = new annotorious.hypo.Popup(a, this._guest, this._eventBroker);
   this._imageAnnotator = new annotorious.mediatypes.image.ImageAnnotator(a, this._popup);
   this._popup.addAnnotator(this._imageAnnotator);
@@ -7236,10 +7237,13 @@ annotorious.hypo.ImagePlugin = function(a, b) {
   this._imageAnnotator._eventBroker.removeHandler(annotorious.events.EventType.SELECTION_COMPLETED, this._imageAnnotator._eventBroker._handlers[annotorious.events.EventType.SELECTION_COMPLETED][0]);
   this._imageAnnotator._eventBroker.removeHandler(annotorious.events.EventType.SELECTION_CANCELED, c);
   this._imageAnnotator._eventBroker.addHandler(annotorious.events.EventType.SELECTION_COMPLETED, function(a) {
+    a.temporaryImageID = d._imageAnnotator._image.src + "#" + (new Date).toString();
     d._guest.selectedShape = {selector:[{type:"ShapeSelector", shapeType:a.shape.type, geometry:a.shape.geometry, source:d._imageAnnotator._image.src}]};
-    d._guest.onAdderClick(a);
-    d._imageAnnotator.addAnnotation({src:d._imageAnnotator._image.src, shapes:[a.shape]});
-    d._imageAnnotator.stopSelection()
+    var b = {src:d._imageAnnotator._image.src, shapes:[a.shape]};
+    d._annotations[a.temporaryImageID] = b;
+    d._imageAnnotator.addAnnotation(b);
+    d._imageAnnotator.stopSelection();
+    d._guest.onAdderClick(a)
   });
   this._imageAnnotator._eventBroker.addHandler(annotorious.events.EventType.SELECTION_CANCELED, function() {
     annotorious.events.ui.hasMouse && goog.style.showElement(d._imageAnnotator._editCanvas, !1);
@@ -7247,6 +7251,11 @@ annotorious.hypo.ImagePlugin = function(a, b) {
   });
   annotorious.hypo.ImagePlugin.prototype.addAnnotation = function(a) {
     this._imageAnnotator.addAnnotation(a)
+  };
+  annotorious.hypo.ImagePlugin.prototype.updateAnnotation = function(a, b) {
+    var c = this._annotations[a];
+    "id" in b && a != b.id && (this._annotations[b.id] = c, delete this._annotations[a]);
+    c.text = b.text
   };
   annotorious.hypo.ImagePlugin.prototype.disableSelection = function() {
     this._imageAnnotator._selectionEnabled = !1;
@@ -7267,6 +7276,11 @@ window.Annotator.Plugin.AnnotoriousImagePlugin = function() {
     e = new annotorious.shape.Shape(a.shapeType, e, annotorious.shape.Units.FRACTION);
     d.shapes = [e];
     this.handlers[d.source].addAnnotation(d)
+  };
+  a.prototype.updateAnnotation = function(a) {
+    var c = this.handlers[a.target[0].selector[0].source], d = null;
+    "id" in a ? "temporaryImageID" in a ? (d = a.temporaryImageID, delete a.temporaryImageID) : d = a.id : d = a.temporaryImageID;
+    c.updateAnnotation(d, a)
   };
   a.prototype.pluginInit = function() {
     var a = this._el.getElementsByTagName("img"), c = this;
