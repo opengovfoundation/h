@@ -131,20 +131,59 @@ class Displayer
                 replies.splice pos, 1
                 delete @idTable[annotation.id]
 
+    $scope.get_meta = (img_url) ->
+      $("<img/>").attr("src", img_url).load ->
+        meta = {}
+        meta.width = this.width
+        meta.height = this.height
+        $scope.crop_image img_url, meta
+
+    $scope.crop_image = (img_url, image_meta) ->
+      shapeSelector = null
+      for target in $scope.annotation.target
+        for selector in target.selector
+          if selector.type is 'ShapeSelector'
+            shapeSelector = selector
+            break
+
+      console.log shapeSelector
+      if shapeSelector?
+        # Now for the css cropping
+        if shapeSelector.shapeType is 'rect'
+          # Convert fraction to pixel
+          width = shapeSelector.geometry.width * image_meta.width
+          height = shapeSelector.geometry.height * image_meta.height
+          x = shapeSelector.geometry.x * image_meta.width
+          y = shapeSelector.geometry.y * image_meta.height
+          style =  "display: block;"
+          style += "background-image: url(" + img_url + ");"
+          style += "width:" + width + "px;"
+          style += "height:" + height + "px;"
+          style += "background-position: -" + x + "px -" + y + "px;"
+
+          container = $('center#image-annotation-container')
+          image = '<span style="'.concat style, '"></span>'
+          container.append(image)
+
     if $scope.annotation.referrers?
       $scope.manage_new_data $scope.annotation.referrers, 'past'
 
-    # Image annotation support
+    # Image annotation support - cropping image
     if $scope.root.image_src
+      console.log $scope.annotation
+      $scope.get_meta $scope.root.image_src
+
+
+    #if $scope.root.image_src
       # Add the image tag, because the annotorious does not handle ng-src well
-      container = $('center#image-annotation-container')
-      image = '<img src="' + $scope.root.image_src + '" width="300px" height="300px"/>'
-      container.append(image)
+      #container = $('center#image-annotation-container')
+      #image = '<img src="' + $scope.root.image_src + '" width="300px" height="300px"/>'
+      #container.append(image)
 
-      $scope.imagePlugin = new Annotator.Plugin.AnnotoriousImagePlugin($element[0], {read_only: true})
-      $scope.imagePlugin.pluginInit()
+      #$scope.imagePlugin = new Annotator.Plugin.AnnotoriousImagePlugin($element[0], {read_only: true})
+      #$scope.imagePlugin.pluginInit()
 
-      $scope.imagePlugin.addAnnotation $scope.annotation.target[0].selector[0], $scope.annotation
+      #$scope.imagePlugin.addAnnotation $scope.annotation.target[0].selector[0], $scope.annotation
 
     document.init_annotation = null
     $scope.open()
