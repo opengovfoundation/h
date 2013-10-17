@@ -164,6 +164,18 @@ class Displayer
           container = $('center#image-annotation-container')
           image = '<span style="'.concat style, '"></span>'
           container.append(image)
+        else
+          if shapeSelector.shapeType is 'polygon'
+            style = "clip-path: polygon("
+            inner =""
+            for point in shapeSelector.geometry.points
+              inner += "".concat point.x * image_meta.width, "px ", point.y * image_meta.height, "px, "
+            inner = inner.slice 0, inner.length - 2
+            style = style.concat inner, "); -webkit-clip-path: polygon(", inner, ");"
+            container = $('center#image-annotation-container')
+            image = '<img src="'.concat img_url, '" style="', style, '"></img>'
+            container.append(image)
+
 
     if $scope.annotation.referrers?
       $scope.manage_new_data $scope.annotation.referrers, 'past'
