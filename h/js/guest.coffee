@@ -93,6 +93,8 @@ class Annotator.Guest extends Annotator
           $(this).addClass('annotator-hl-active')
         else if not $(this).hasClass('annotator-hl-temporary')
           $(this).removeClass('annotator-hl-active')
+
+    # Do something with image annotation
     )
 
     .bind('scrollTo', (ctx, tag) =>
@@ -261,8 +263,7 @@ class Annotator.Guest extends Annotator
   setupAnnotation: (annotation) ->
     annotation = super # Set up annotation as usual
     # Temporarily put all of them into comments
-    hasSelector = this.findSelector annotation.target[0].selector, "ShapeSelector"
-    if this.isComment(annotation) or hasSelector
+    if this.isComment(annotation)
       @comments.push annotation
     annotation
 

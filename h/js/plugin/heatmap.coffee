@@ -2,7 +2,7 @@ $ = Annotator.$
 
 class Annotator.Plugin.Heatmap extends Annotator.Plugin
   # prototype constants
-  BUCKET_THRESHOLD_PAD: 25
+  BUCKET_THRESHOLD_PAD: 10
   BUCKET_SIZE: 50
   BOTTOM_CORRECTION: 14
 
@@ -138,6 +138,11 @@ class Annotator.Plugin.Heatmap extends Annotator.Plugin
         points.push [x + h, -1, d]
       points
     , []
+
+    # Imagehighlights
+    imagePlugin = @annotator.plugins.AnnotoriousImagePlugin
+    imagePoints = imagePlugin.calculateHeatmapPoints wrapper, defaultView, @BUCKET_SIZE, @BUCKET_THRESHOLD_PAD, above, below
+    points = points.concat imagePoints
 
     # Accumulate the overlapping annotations into buckets.
     # The algorithm goes like this:
