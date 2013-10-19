@@ -766,13 +766,13 @@ goog.string.getRandomString = function() {
 };
 goog.string.compareVersions = function(a, b) {
   for(var c = 0, d = goog.string.trim(String(a)).split("."), e = goog.string.trim(String(b)).split("."), f = Math.max(d.length, e.length), g = 0;0 == c && g < f;g++) {
-    var h = d[g] || "", i = e[g] || "", j = RegExp("(\\d*)(\\D*)", "g"), m = RegExp("(\\d*)(\\D*)", "g");
+    var h = d[g] || "", i = e[g] || "", j = RegExp("(\\d*)(\\D*)", "g"), l = RegExp("(\\d*)(\\D*)", "g");
     do {
-      var k = j.exec(h) || ["", "", ""], n = m.exec(i) || ["", "", ""];
+      var k = j.exec(h) || ["", "", ""], n = l.exec(i) || ["", "", ""];
       if(0 == k[0].length && 0 == n[0].length) {
         break
       }
-      var c = 0 == k[1].length ? 0 : parseInt(k[1], 10), u = 0 == n[1].length ? 0 : parseInt(n[1], 10), c = goog.string.compareElements_(c, u) || goog.string.compareElements_(0 == k[2].length, 0 == n[2].length) || goog.string.compareElements_(k[2], n[2])
+      var c = 0 == k[1].length ? 0 : parseInt(k[1], 10), s = 0 == n[1].length ? 0 : parseInt(n[1], 10), c = goog.string.compareElements_(c, s) || goog.string.compareElements_(0 == k[2].length, 0 == n[2].length) || goog.string.compareElements_(k[2], n[2])
     }while(0 == c)
   }
   return c
@@ -2582,33 +2582,33 @@ goog.dom.query = function() {
   var b = goog.userAgent.WEBKIT && "BackCompat" == goog.dom.getDocument().compatMode, c = goog.dom.getDocument().firstChild.children ? "children" : "childNodes", d = !1, e = function(a) {
     for(var a = 0 <= ">~+".indexOf(a.slice(-1)) ? a + " * " : a + " ", b = function(b, c) {
       return goog.string.trim(a.slice(b, c))
-    }, c = [], e = -1, f = -1, g = -1, h = -1, i = -1, j = -1, m = -1, t = "", r = "", A, p = 0, n = a.length, l = null, k = null, q = function() {
-      0 <= j && (l.id = b(j, p).replace(/\\/g, ""), j = -1);
-      if(0 <= m) {
-        var a = m == p ? null : b(m, p);
-        0 > ">~+".indexOf(a) ? l.tag = a : l.oper = a;
-        m = -1
+    }, c = [], e = -1, f = -1, g = -1, h = -1, i = -1, j = -1, l = -1, y = "", t = "", D, q = 0, n = a.length, m = null, k = null, p = function() {
+      0 <= j && (m.id = b(j, q).replace(/\\/g, ""), j = -1);
+      if(0 <= l) {
+        var a = l == q ? null : b(l, q);
+        0 > ">~+".indexOf(a) ? m.tag = a : m.oper = a;
+        l = -1
       }
-      0 <= i && (l.classes.push(b(i + 1, p).replace(/\\/g, "")), i = -1)
-    };t = r, r = a.charAt(p), p < n;p++) {
-      if("\\" != t) {
-        if(l || (A = p, l = {query:null, pseudos:[], attrs:[], classes:[], tag:null, oper:null, id:null, getTag:function() {
+      0 <= i && (m.classes.push(b(i + 1, q).replace(/\\/g, "")), i = -1)
+    };y = t, t = a.charAt(q), q < n;q++) {
+      if("\\" != y) {
+        if(m || (D = q, m = {query:null, pseudos:[], attrs:[], classes:[], tag:null, oper:null, id:null, getTag:function() {
           return d ? this.otag : this.tag
-        }}, m = p), 0 <= e) {
-          if("]" == r) {
-            k.attr ? k.matchFor = b(g || e + 1, p) : k.attr = b(e + 1, p);
+        }}, l = q), 0 <= e) {
+          if("]" == t) {
+            k.attr ? k.matchFor = b(g || e + 1, q) : k.attr = b(e + 1, q);
             if((e = k.matchFor) && ('"' == e.charAt(0) || "'" == e.charAt(0))) {
               k.matchFor = e.slice(1, -1)
             }
-            l.attrs.push(k);
+            m.attrs.push(k);
             k = null;
             e = g = -1
           }else {
-            "=" == r && (g = 0 <= "|~^$*".indexOf(t) ? t : "", k.type = g + r, k.attr = b(e + 1, p - g.length), g = p + 1)
+            "=" == t && (g = 0 <= "|~^$*".indexOf(y) ? y : "", k.type = g + t, k.attr = b(e + 1, q - g.length), g = q + 1)
           }
         }else {
-          0 <= f ? ")" == r && (0 <= h && (k.value = b(f + 1, p)), h = f = -1) : "#" == r ? (q(), j = p + 1) : "." == r ? (q(), i = p) : ":" == r ? (q(), h = p) : "[" == r ? (q(), e = p, k = {}) : "(" == r ? (0 <= h && (k = {name:b(h + 1, p), value:null}, l.pseudos.push(k)), f = p) : " " == r && t != r && (q(), 0 <= h && l.pseudos.push({name:b(h + 1, p)}), l.loops = l.pseudos.length || l.attrs.length || l.classes.length, l.oquery = l.query = b(A, p), l.otag = l.tag = l.oper ? null : l.tag || "*", 
-          l.tag && (l.tag = l.tag.toUpperCase()), c.length && c[c.length - 1].oper && (l.infixOper = c.pop(), l.query = l.infixOper.query + " " + l.query), c.push(l), l = null)
+          0 <= f ? ")" == t && (0 <= h && (k.value = b(f + 1, q)), h = f = -1) : "#" == t ? (p(), j = q + 1) : "." == t ? (p(), i = q) : ":" == t ? (p(), h = q) : "[" == t ? (p(), e = q, k = {}) : "(" == t ? (0 <= h && (k = {name:b(h + 1, q), value:null}, m.pseudos.push(k)), f = q) : " " == t && y != t && (p(), 0 <= h && m.pseudos.push({name:b(h + 1, q)}), m.loops = m.pseudos.length || m.attrs.length || m.classes.length, m.oquery = m.query = b(D, q), m.otag = m.tag = m.oper ? null : m.tag || "*", 
+          m.tag && (m.tag = m.tag.toUpperCase()), c.length && c[c.length - 1].oper && (m.infixOper = c.pop(), m.query = m.infixOper.query + " " + m.query), c.push(m), m = null)
         }
       }
     }
@@ -2649,21 +2649,21 @@ goog.dom.query = function() {
     return function(c) {
       return h(c, a) == b
     }
-  }}, j = "undefined" == typeof goog.dom.getDocument().firstChild.nextElementSibling, m = !j ? "nextElementSibling" : "nextSibling", k = !j ? "previousElementSibling" : "previousSibling", n = j ? g : goog.functions.TRUE, u = function(a) {
+  }}, j = "undefined" == typeof goog.dom.getDocument().firstChild.nextElementSibling, l = !j ? "nextElementSibling" : "nextSibling", k = !j ? "previousElementSibling" : "previousSibling", n = j ? g : goog.functions.TRUE, s = function(a) {
     for(;a = a[k];) {
       if(n(a)) {
         return!1
       }
     }
     return!0
-  }, B = function(a) {
-    for(;a = a[m];) {
+  }, r = function(a) {
+    for(;a = a[l];) {
       if(n(a)) {
         return!1
       }
     }
     return!0
-  }, v = function(a) {
+  }, p = function(a) {
     var b = a.parentNode, d = 0, e = b[c], f = a._i || -1, g = b._l || -1;
     if(!e) {
       return-1
@@ -2674,25 +2674,25 @@ goog.dom.query = function() {
     }
     b._l = e;
     f = -1;
-    for(b = b.firstElementChild || b.firstChild;b;b = b[m]) {
+    for(b = b.firstElementChild || b.firstChild;b;b = b[l]) {
       n(b) && (b._i = ++d, a === b && (f = d))
     }
     return f
-  }, M = function(a) {
-    return!(v(a) % 2)
-  }, N = function(a) {
-    return v(a) % 2
+  }, u = function(a) {
+    return!(p(a) % 2)
+  }, z = function(a) {
+    return p(a) % 2
   }, x = {checked:function() {
     return function(a) {
       return a.checked || a.attributes.checked
     }
   }, "first-child":function() {
-    return u
+    return s
   }, "last-child":function() {
-    return B
+    return r
   }, "only-child":function() {
     return function(a) {
-      return!u(a) || !B(a) ? !1 : !0
+      return!s(a) || !r(a) ? !1 : !0
     }
   }, empty:function() {
     return function(a) {
@@ -2716,23 +2716,23 @@ goog.dom.query = function() {
     var c = e(b)[0], d = {el:1};
     "*" != c.tag && (d.tag = 1);
     c.classes.length || (d.classes = 1);
-    var f = s(c, d);
+    var f = w(c, d);
     return function(a) {
       return!f(a)
     }
   }, "nth-child":function(a, b) {
     if("odd" == b) {
-      return N
+      return z
     }
     if("even" == b) {
-      return M
+      return u
     }
     if(-1 != b.indexOf("n")) {
       var c = b.split("n", 2), d = c[0] ? "-" == c[0] ? -1 : parseInt(c[0], 10) : 1, e = c[1] ? parseInt(c[1], 10) : 0, f = 0, g = -1;
       0 < d ? 0 > e ? e = e % d && d + e % d : 0 < e && (e >= d && (f = e - e % d), e %= d) : 0 > d && (d *= -1, 0 < e && (g = e, e %= d));
       if(0 < d) {
         return function(a) {
-          a = v(a);
+          a = p(a);
           return a >= f && (0 > g || a <= g) && a % d == e
         }
       }
@@ -2740,9 +2740,9 @@ goog.dom.query = function() {
     }
     var h = parseInt(b, 10);
     return function(a) {
-      return v(a) == h
+      return p(a) == h
     }
-  }}, O = goog.userAgent.IE ? function(a) {
+  }}, M = goog.userAgent.IE ? function(a) {
     var b = a.toLowerCase();
     "class" == b && (a = "className");
     return function(c) {
@@ -2752,7 +2752,7 @@ goog.dom.query = function() {
     return function(b) {
       return b && b.getAttribute && b.hasAttribute(a)
     }
-  }, s = function(a, b) {
+  }, w = function(a, b) {
     if(!a) {
       return goog.functions.TRUE
     }
@@ -2774,7 +2774,7 @@ goog.dom.query = function() {
     });
     b.attrs || goog.array.forEach(a.attrs, function(a) {
       var b, d = a.attr;
-      a.type && i[a.type] ? b = i[a.type](d, a.matchFor) : d.length && (b = O(d));
+      a.type && i[a.type] ? b = i[a.type](d, a.matchFor) : d.length && (b = M(d));
       b && (c = f(c, b))
     });
     b.id || a.id && (c = f(c, function(b) {
@@ -2782,18 +2782,18 @@ goog.dom.query = function() {
     }));
     !c && !("default" in b) && (c = goog.functions.TRUE);
     return c
-  }, C = {}, D = function(d) {
-    var e = C[d.query];
+  }, E = {}, F = function(d) {
+    var e = E[d.query];
     if(e) {
       return e
     }
-    var f = d.infixOper, f = f ? f.oper : "", h = s(d, {el:1}), i = "*" == d.tag, k = goog.dom.getDocument().getElementsByClassName;
+    var f = d.infixOper, f = f ? f.oper : "", h = w(d, {el:1}), i = "*" == d.tag, k = goog.dom.getDocument().getElementsByClassName;
     if(f) {
-      if(k = {el:1}, i && (k.tag = 1), h = s(d, k), "+" == f) {
-        var q = h, e = function(a, b, c) {
-          for(;a = a[m];) {
+      if(k = {el:1}, i && (k.tag = 1), h = w(d, k), "+" == f) {
+        var p = h, e = function(a, b, c) {
+          for(;a = a[l];) {
             if(!j || g(a)) {
-              (!c || y(a, c)) && q(a) && b.push(a);
+              (!c || B(a, c)) && p(a) && b.push(a);
               break
             }
           }
@@ -2801,23 +2801,23 @@ goog.dom.query = function() {
         }
       }else {
         if("~" == f) {
-          var K = h, e = function(a, b, c) {
-            for(a = a[m];a;) {
+          var r = h, e = function(a, b, c) {
+            for(a = a[l];a;) {
               if(n(a)) {
-                if(c && !y(a, c)) {
+                if(c && !B(a, c)) {
                   break
                 }
-                K(a) && b.push(a)
+                r(a) && b.push(a)
               }
-              a = a[m]
+              a = a[l]
             }
             return b
           }
         }else {
           if(">" == f) {
-            var w = h, w = w || goog.functions.TRUE, e = function(a, b, d) {
+            var A = h, A = A || goog.functions.TRUE, e = function(a, b, d) {
               for(var e = 0, f = a[c];a = f[e++];) {
-                n(a) && ((!d || y(a, d)) && w(a, e)) && b.push(a)
+                n(a) && ((!d || B(a, d)) && A(a, e)) && b.push(a)
               }
               return b
             }
@@ -2826,7 +2826,7 @@ goog.dom.query = function() {
       }
     }else {
       if(d.id) {
-        h = !d.loops && i ? goog.functions.TRUE : s(d, {el:1, id:1}), e = function(b, c) {
+        h = !d.loops && i ? goog.functions.TRUE : w(d, {el:1, id:1}), e = function(b, c) {
           var e = goog.dom.getDomHelper(b).getElement(d.id);
           if(e && h(e)) {
             if(9 == b.nodeType) {
@@ -2842,8 +2842,8 @@ goog.dom.query = function() {
         }
       }else {
         if(k && /\{\s*\[native code\]\s*\}/.test(String(k)) && d.classes.length && !b) {
-          var h = s(d, {el:1, classes:1, id:1}), L = d.classes.join(" "), e = function(b, c) {
-            for(var d = a(0, c), e, f = 0, g = b.getElementsByClassName(L);e = g[f++];) {
+          var h = w(d, {el:1, classes:1, id:1}), s = d.classes.join(" "), e = function(b, c) {
+            for(var d = a(0, c), e, f = 0, g = b.getElementsByClassName(s);e = g[f++];) {
               h(e, b) && d.push(e)
             }
             return d
@@ -2854,7 +2854,7 @@ goog.dom.query = function() {
               e.push(f)
             }
             return e
-          } : (h = s(d, {el:1, tag:1, id:1}), e = function(b, c) {
+          } : (h = w(d, {el:1, tag:1, id:1}), e = function(b, c) {
             for(var e = a(0, c), f, g = 0, i = b.getElementsByTagName(d.getTag());f = i[g++];) {
               h(f, b) && e.push(f)
             }
@@ -2863,11 +2863,11 @@ goog.dom.query = function() {
         }
       }
     }
-    return C[d.query] = e
-  }, E = {}, F = {}, G = function(b) {
+    return E[d.query] = e
+  }, G = {}, H = {}, I = function(b) {
     var c = e(goog.string.trim(b));
     if(1 == c.length) {
-      var d = D(c[0]);
+      var d = F(c[0]);
       return function(a) {
         if(a = d(a, [])) {
           a.nozip = !0
@@ -2881,8 +2881,8 @@ goog.dom.query = function() {
         d = c[i];
         e = b.length - 1;
         0 < e && (g = {}, h.nozip = !0);
-        e = D(d);
-        for(var z = 0;d = b[z];z++) {
+        e = F(d);
+        for(var C = 0;d = b[C];C++) {
           e(d, h, g)
         }
         if(!h.length) {
@@ -2892,21 +2892,21 @@ goog.dom.query = function() {
       }
       return h
     }
-  }, H = !!goog.dom.getDocument().querySelectorAll && (!goog.userAgent.WEBKIT || goog.userAgent.isVersion("526")), I = function(a, c) {
-    if(H) {
-      var d = F[a];
+  }, J = !!goog.dom.getDocument().querySelectorAll && (!goog.userAgent.WEBKIT || goog.userAgent.isVersion("526")), K = function(a, c) {
+    if(J) {
+      var d = H[a];
       if(d && !c) {
         return d
       }
     }
-    if(d = E[a]) {
+    if(d = G[a]) {
       return d
     }
     var d = a.charAt(0), e = -1 == a.indexOf(" ");
     0 <= a.indexOf("#") && e && (c = !0);
-    if(H && !c && -1 == ">~+".indexOf(d) && (!goog.userAgent.IE || -1 == a.indexOf(":")) && !(b && 0 <= a.indexOf(".")) && -1 == a.indexOf(":contains") && -1 == a.indexOf("|=")) {
+    if(J && !c && -1 == ">~+".indexOf(d) && (!goog.userAgent.IE || -1 == a.indexOf(":")) && !(b && 0 <= a.indexOf(".")) && -1 == a.indexOf(":contains") && -1 == a.indexOf("|=")) {
       var f = 0 <= ">~+".indexOf(a.charAt(a.length - 1)) ? a + " *" : a;
-      return F[a] = function(b) {
+      return H[a] = function(b) {
         try {
           if(!(9 == b.nodeType || e)) {
             throw"";
@@ -2915,28 +2915,28 @@ goog.dom.query = function() {
           goog.userAgent.IE ? c.commentStrip = !0 : c.nozip = !0;
           return c
         }catch(d) {
-          return I(a, !0)(b)
+          return K(a, !0)(b)
         }
       }
     }
     var g = a.split(/\s*,\s*/);
-    return E[a] = 2 > g.length ? G(a) : function(a) {
+    return G[a] = 2 > g.length ? I(a) : function(a) {
       for(var b = 0, c = [], d;d = g[b++];) {
-        c = c.concat(G(d)(a))
+        c = c.concat(I(d)(a))
       }
       return c
     }
-  }, q = 0, P = goog.userAgent.IE ? function(a) {
-    return d ? a.getAttribute("_uid") || a.setAttribute("_uid", ++q) || q : a.uniqueID
+  }, v = 0, N = goog.userAgent.IE ? function(a) {
+    return d ? a.getAttribute("_uid") || a.setAttribute("_uid", ++v) || v : a.uniqueID
   } : function(a) {
-    return a._uid || (a._uid = ++q)
-  }, y = function(a, b) {
+    return a._uid || (a._uid = ++v)
+  }, B = function(a, b) {
     if(!b) {
       return 1
     }
-    var c = P(a);
+    var c = N(a);
     return!b[c] ? b[c] = 1 : 0
-  }, Q = function(a) {
+  }, O = function(a) {
     if(a && a.nozip) {
       return a
     }
@@ -2948,9 +2948,9 @@ goog.dom.query = function() {
     if(2 > a.length) {
       return b
     }
-    q++;
+    v++;
     if(goog.userAgent.IE && d) {
-      var c = q + "";
+      var c = v + "";
       a[0].setAttribute("_zipIdx", c);
       for(var e = 1, f;f = a[e];e++) {
         a[e].getAttribute("_zipIdx") != c && b.push(f), f.setAttribute("_zipIdx", c)
@@ -2964,14 +2964,14 @@ goog.dom.query = function() {
         }catch(h) {
         }
       }else {
-        a[0] && (a[0]._zipIdx = q);
+        a[0] && (a[0]._zipIdx = v);
         for(e = 1;f = a[e];e++) {
-          a[e]._zipIdx != q && b.push(f), f._zipIdx = q
+          a[e]._zipIdx != v && b.push(f), f._zipIdx = v
         }
       }
     }
     return b
-  }, J = function(a, b) {
+  }, L = function(a, b) {
     if(!a) {
       return[]
     }
@@ -2986,10 +2986,10 @@ goog.dom.query = function() {
     }
     var b = b || goog.dom.getDocument(), c = b.ownerDocument || b.documentElement;
     d = b.contentType && "application/xml" == b.contentType || goog.userAgent.OPERA && (b.doctype || "[object XMLDocument]" == c.toString()) || !!c && (goog.userAgent.IE ? c.xml : b.xmlVersion || c.xmlVersion);
-    return(c = I(a)(b)) && c.nozip ? c : Q(c)
+    return(c = K(a)(b)) && c.nozip ? c : O(c)
   };
-  J.pseudos = x;
-  return J
+  L.pseudos = x;
+  return L
 }();
 goog.exportSymbol("goog.dom.query", goog.dom.query);
 goog.exportSymbol("goog.dom.query.pseudos", goog.dom.query.pseudos);
@@ -3529,26 +3529,26 @@ goog.events.handleBrowserEvent_ = function(a, b) {
     f = !0;
     try {
       if(h) {
-        for(var m = [], k = j.currentTarget;k;k = k.parentNode) {
-          m.push(k)
+        for(var l = [], k = j.currentTarget;k;k = k.parentNode) {
+          l.push(k)
         }
         g = e[!0];
         g.remaining_ = g.count_;
-        for(var n = m.length - 1;!j.propagationStopped_ && 0 <= n && g.remaining_;n--) {
-          j.currentTarget = m[n], f &= goog.events.fireListeners_(g, m[n], d, !0, j)
+        for(var n = l.length - 1;!j.propagationStopped_ && 0 <= n && g.remaining_;n--) {
+          j.currentTarget = l[n], f &= goog.events.fireListeners_(g, l[n], d, !0, j)
         }
         if(i) {
           g = e[!1];
           g.remaining_ = g.count_;
-          for(n = 0;!j.propagationStopped_ && n < m.length && g.remaining_;n++) {
-            j.currentTarget = m[n], f &= goog.events.fireListeners_(g, m[n], d, !1, j)
+          for(n = 0;!j.propagationStopped_ && n < l.length && g.remaining_;n++) {
+            j.currentTarget = l[n], f &= goog.events.fireListeners_(g, l[n], d, !1, j)
           }
         }
       }else {
         f = goog.events.fireListener(c, j)
       }
     }finally {
-      m && (m.length = 0)
+      l && (l.length = 0)
     }
     return f
   }
@@ -5278,8 +5278,8 @@ goog.ui.ControlRenderer.prototype.decorate = function(a, b) {
   var j = a.getExtraClassNames();
   j && i.push.apply(i, j);
   if(goog.userAgent.IE && !goog.userAgent.isVersion("7")) {
-    var m = this.getAppliedCombinedClassNames_(i);
-    0 < m.length && (i.push.apply(i, m), c = !0)
+    var l = this.getAppliedCombinedClassNames_(i);
+    0 < l.length && (i.push.apply(i, l), c = !0)
   }
   (!g || !h || j || c) && goog.dom.classes.set(b, i.join(" "));
   this.setAriaStates(a, b);
@@ -7278,7 +7278,7 @@ window.Annotator.Plugin.AnnotoriousImagePlugin = function() {
     this.handlers = {}
   }
   a.prototype.addAnnotation = function(a, c) {
-    var d = {text:c.text, id:c.id};
+    var d = {text:c.text, id:c.id, hypoAnnotation:c};
     d.source = a.source;
     var e = null;
     "rect" == a.shapeType ? e = new annotorious.shape.geom.Rectangle(a.geometry.x, a.geometry.y, a.geometry.width, a.geometry.height) : "polygon" == a.shapeType && (e = new annotorious.shape.geom.Polygon(a.geometry.points));
@@ -7294,6 +7294,32 @@ window.Annotator.Plugin.AnnotoriousImagePlugin = function() {
     var c = this.handlers[a.target[0].selector[0].source], d = null;
     "id" in a ? "temporaryImageID" in a ? (d = a.temporaryImageID, delete a.temporaryImageID) : d = a.id : d = a.temporaryImageID;
     c.updateAnnotation(d, a)
+  };
+  a.prototype.calculateHeatmapPoints = function(a, c, d, e, f, g) {
+    document.test = this._el;
+    var h = this;
+    return Array.prototype.slice.call(this._el.getElementsByTagName("img")).reduce(function(i, j) {
+      var l = j.getBoundingClientRect(), k = l.top - a.offset().top - c.pageYOffset, n;
+      for(n in h.handlers[j.src]._annotations) {
+        var s = h.handlers[j.src]._annotations[n].hypoAnnotation, r = s.target[0].selector[0], p = 0, u = 0;
+        if("rect" == r.shapeType) {
+          p = l.height * r.geometry.y, u = l.height * r.geometry.height
+        }else {
+          if("polygon" == r.shapeType) {
+            var u = 1, z = 0, x;
+            for(x in r.geometry.points) {
+              p = r.geometry.points[x], p.y < u && (u = p.y), p.y > z && (z = p.y)
+            }
+            p = l.height * u;
+            u = l.height * (z - u)
+          }
+        }
+        r = k + p;
+        p = u;
+        r <= d + e ? s in f || f.push(s) : r + p >= $(window).height() - d ? s in g || g.push(s) : (i.push([r, 1, s]), i.push([r + p, -1, s]))
+      }
+      return i
+    }, [])
   };
   a.prototype.pluginInit = function() {
     var a = this._el.getElementsByTagName("img"), c = this;
