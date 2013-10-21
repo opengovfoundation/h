@@ -101,7 +101,8 @@ class Annotator.Guest extends Annotator
         else if not $(this).hasClass('annotator-hl-temporary')
           $(this).removeClass('annotator-hl-active')
 
-    # Do something with image annotation
+      # Do something with image annotation
+      @plugins.AnnotoriousImagePlugin.setActiveHighlights tags
     )
 
     .bind('scrollTo', (ctx, tag) =>
@@ -109,6 +110,8 @@ class Annotator.Guest extends Annotator
       .each ->
         if $(this).data('annotation').$$tag is tag
           $(this).scrollintoview()
+
+
     )
 
     .bind('adderClick', =>
