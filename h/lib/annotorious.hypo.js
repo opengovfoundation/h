@@ -7252,6 +7252,14 @@ annotorious.hypo.ImagePlugin = function(a, b) {
     annotorious.events.ui.hasMouse && goog.style.showElement(d._imageAnnotator._editCanvas, !1);
     d._imageAnnotator._currentSelector.stopSelection()
   });
+  var e = annotorious.events.ui.hasTouch ? this._imageAnnotator._editCanvas : this._imageAnnotator._viewCanvas;
+  goog.events.listen(e, annotorious.events.ui.EventType.DOWN, function(a) {
+    var a = annotorious.events.ui.sanitizeCoordinates(a, e), a = d._imageAnnotator.getAnnotationsAt(a.x, a.y), b = [], c;
+    for(c in a) {
+      b.push(a[c].hypoAnnotation)
+    }
+    d._guest.showViewer(b)
+  });
   annotorious.hypo.ImagePlugin.prototype.addAnnotation = function(a) {
     this._imageAnnotator.addAnnotation(a);
     this._annotations[a.id] = a
