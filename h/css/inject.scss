@@ -375,9 +375,12 @@ $baseFontSize: 14px;
 }
 
 .annotorious-item-unfocus {
-  opacity:0;
+  opacity: 0;
 }
 
+.annotator-highlights-always-on .annotorious-item-unfocus {
+    opacity: 1;
+}
 
 /*
   Mobile layout
