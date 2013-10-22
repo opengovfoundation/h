@@ -299,7 +299,7 @@ class Annotator.Guest extends Annotator
     # Show a temporary highlight so the user can see what they selected
     # Also extract the quotation and serialize the ranges
     annotation = this.setupAnnotation(this.createAnnotation())
-    $(annotation.highlights).addClass('annotator-hl-temporary')
+    setTimeout -> $(annotation.highlights).addClass('annotator-hl-temporary')
 
     # Subscribe to the editor events
 
@@ -323,3 +323,18 @@ class Annotator.Guest extends Annotator
 
     # Display the editor.
     this.showEditor(annotation, position)
+
+  # TODO: Workaround for double annotation deletion.
+  # The short story: hiding the editor sometimes triggers
+  # a spurious annotation delete.
+  # Uncomment the traces below to investigate this further.
+  deleteAnnotation: (annotation) ->
+    if annotation.deleted
+#      console.log "Not deleting annotation the second time."
+#      console.trace()
+      return
+    else
+#      console.log "Deleting an annotation in " + @role + "."
+#      console.trace()
+      annotation.deleted = true
+    super
