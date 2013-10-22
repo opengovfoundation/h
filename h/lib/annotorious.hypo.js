@@ -7241,8 +7241,9 @@ annotorious.hypo.ImagePlugin = function(a, b) {
   this._imageAnnotator._eventBroker.removeHandler(annotorious.events.EventType.SELECTION_CANCELED, c);
   this._imageAnnotator._eventBroker.addHandler(annotorious.events.EventType.SELECTION_COMPLETED, function(a) {
     a.temporaryImageID = d._imageAnnotator._image.src + "#" + (new Date).toString();
-    d._guest.selectedShape = {selector:[{type:"ShapeSelector", shapeType:a.shape.type, geometry:a.shape.geometry, source:d._imageAnnotator._image.src}]};
-    var b = {src:d._imageAnnotator._image.src, shapes:[a.shape]};
+    var b = {selector:[{type:"ShapeSelector", shapeType:a.shape.type, geometry:a.shape.geometry, source:d._imageAnnotator._image.src}]};
+    d._guest.selectedShape = b;
+    b = {src:d._imageAnnotator._image.src, shapes:[a.shape], hypoAnnotation:{target:[b]}};
     d._annotations[a.temporaryImageID] = b;
     d._imageAnnotator.addAnnotation(b);
     d._imageAnnotator.stopSelection();
