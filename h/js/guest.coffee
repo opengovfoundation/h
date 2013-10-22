@@ -147,11 +147,11 @@ class Annotator.Guest extends Annotator
 
   _setupWrapper: ->
     @wrapper = @element
-    #.on 'click', =>
-    #  unless @ignoreMouseup or @noBack
-    #    setTimeout =>
-    #      unless @selectedRanges?.length
-    #        @panel?.notify method: 'back'
+    .on 'click', =>
+      unless @ignoreMouseup or @noBack
+        setTimeout =>
+          unless @selectedRanges?.length
+            @panel?.notify method: 'back'
     this._setupMatching()
     @domMatcher.setRootNode @wrapper[0]
     this
