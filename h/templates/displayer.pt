@@ -75,7 +75,7 @@
 
                 <div class="body">
                   <span ng-show="annotation.deleted">Reason:</span>
-                  <span ng-bind-html-unsafe="annotation.text | converter"/>
+                  <div ng-bind-html-unsafe="annotation.text | converter"/>
                 </div>
 
                 <ul ng-model="annotation.tags"
@@ -111,7 +111,7 @@
 
                   <div class="body">
                     <span ng-show="reply.deleted">Reason:</span>
-                    <span ng-bind-html-unsafe="reply.text | converter"/>
+                    <div ng-bind-html-unsafe="reply.text | converter"/>
                   </div>
 
                   <div>
