@@ -664,7 +664,7 @@ class Annotation
           x = shapeSelector.geometry.x * image_meta.width
           y = shapeSelector.geometry.y * image_meta.height
 
-          ratio = if 100/width < 100/height then 100/width else 100/height
+          ratio = if 50/width < 50/height then 50/width else 50/height
           style =  "display: block;"
           style += "background-image: url(" + img_url + ");"
           style += "width:" + width + "px;"
@@ -674,9 +674,7 @@ class Annotation
           style += "-webkit-transform:scale("+ ratio + "," + ratio + ");"
           style += "-moz-transform:scale("+ ratio + "," + ratio + ");"
 
-          #container = $('center#image-annotation-container')
-          #container = $element.parent().parent().parent().find('blockquote#image-annotation-container')
-          container = $element.parent().parent().find('blockquote#image-annotation-container')
+          container = $element.parent().parent().find('div#image-annotation-container')
           image = '<span style="'.concat style, '"></span>'
           container.append(image)
           #container.css("width", width*ratio+25)
@@ -706,7 +704,6 @@ class Annotation
         image_src = null
         if model.$modelValue?.target?
           for target in model.$modelValue.target
-            console.log 'inside'
             for selector in target.selector
               if selector.type is 'ShapeSelector'
                 shapeSelector = selector
