@@ -647,6 +647,76 @@ class Annotation
           $scope.model.$modelValue.highlightText =
             $scope.model.$modelValue.highlightText.replace regexp, annotator.highlighter
 
+    $scope.get_meta = (img_url, shapeSelector) ->
+      $("<img/>").attr("src", img_url).load ->
+        meta = {}
+        meta.width = this.width
+        meta.height = this.height
+        $scope.crop_image img_url, meta, shapeSelector
+
+    $scope.crop_image = (img_url, image_meta, shapeSelector) ->
+      if shapeSelector?
+        # Now for the css cropping
+        if shapeSelector.shapeType is 'rect'
+          # Convert fraction to pixel
+          width = shapeSelector.geometry.width * image_meta.width
+          height = shapeSelector.geometry.height * image_meta.height
+          x = shapeSelector.geometry.x * image_meta.width
+          y = shapeSelector.geometry.y * image_meta.height
+
+          ratio = if 100/width < 100/height then 100/width else 100/height
+          style =  "display: block;"
+          style += "background-image: url(" + img_url + ");"
+          style += "width:" + width + "px;"
+          style += "height:" + height + "px;"
+          style += "background-position: -" + x + "px -" + y + "px;"
+          style += "transform:scale("+ ratio + "," + ratio + ");"
+          style += "-webkit-transform:scale("+ ratio + "," + ratio + ");"
+          style += "-moz-transform:scale("+ ratio + "," + ratio + ");"
+
+          #container = $('center#image-annotation-container')
+          #container = $element.parent().parent().parent().find('blockquote#image-annotation-container')
+          container = $element.parent().parent().find('blockquote#image-annotation-container')
+          image = '<span style="'.concat style, '"></span>'
+          container.append(image)
+          #container.css("width", width*ratio+25)
+          #container.css("height", height*ratio+1)
+          #container.css("position", "relative")
+          #container.css("left", -x)
+          #container.css("top", -y)
+        #else
+        #  if shapeSelector.shapeType is 'polygon'
+        #    style = "clip-path: polygon("
+        #    inner =""
+        #    for point in shapeSelector.geometry.points
+        #      inner += "".concat point.x * image_meta.width, "px ", point.y * image_meta.height, "px, "
+        #    inner = inner.slice 0, inner.length - 2
+        #    style = style.concat inner, "); -webkit-clip-path: polygon(", inner, ");"
+        #    #container = $('center#image-annotation-container')
+        #    container = $element.parent().parent().find('blockquote#image-annotation-container')
+        #    console.log '----------------------------------'
+        #    console.log container
+        #    console.log '----------------------------------'
+        #    image = '<img src="'.concat img_url, '" style="', style, '"></img>'
+        #    container.append(image)
+
+    $scope.$watch 'model', (model) ->
+      if model?
+        shapeSelector = null
+        image_src = null
+        if model.$modelValue?.target?
+          for target in model.$modelValue.target
+            console.log 'inside'
+            for selector in target.selector
+              if selector.type is 'ShapeSelector'
+                shapeSelector = selector
+                image_src = selector.source
+                break
+
+        # Image annotation support - cropping image
+        if shapeSelector?
+          $scope.get_meta image_src, shapeSelector
+
 
 class Editor
   this.$inject = ['$location', '$routeParams', '$scope', 'annotator']
