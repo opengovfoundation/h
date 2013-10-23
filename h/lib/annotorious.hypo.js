@@ -7017,6 +7017,7 @@ annotorious.mediatypes.image.ImageAnnotator = function(a, b) {
   }));
   var e = annotorious.events.ui.hasTouch ? this._editCanvas : this._viewCanvas;
   goog.events.listen(e, annotorious.events.ui.EventType.DOWN, function(a) {
+    a.preventDefault();
     a = annotorious.events.ui.sanitizeCoordinates(a, e);
     d._viewer.highlightAnnotation(void 0);
     d._selectionEnabled ? (goog.style.showElement(d._editCanvas, !0), d._currentSelector.startSelection(a.x, a.y)) : (a = d._viewer.getAnnotationsAt(a.x, a.y), 0 < a.length && d._viewer.highlightAnnotation(a[0]))
