@@ -652,51 +652,28 @@ class Annotation
         meta = {}
         meta.width = this.width
         meta.height = this.height
-        $scope.crop_image img_url, meta, shapeSelector
+        $scope.crop_image this, img_url, meta, shapeSelector
 
-    $scope.crop_image = (img_url, image_meta, shapeSelector) ->
-      if shapeSelector?
-        # Now for the css cropping
-        if shapeSelector.shapeType is 'rect'
-          # Convert fraction to pixel
-          width = shapeSelector.geometry.width * image_meta.width
-          height = shapeSelector.geometry.height * image_meta.height
-          x = shapeSelector.geometry.x * image_meta.width
-          y = shapeSelector.geometry.y * image_meta.height
+    $scope.crop_image = (image, img_url, image_meta, shapeSelector) ->
+      console.log image
+      unless shapeSelector? then return
+      if shapeSelector.shapeType is 'rect'
+        # Convert fraction to pixel
+        width = shapeSelector.geometry.width * image_meta.width
+        height = shapeSelector.geometry.height * image_meta.height
+        x = shapeSelector.geometry.x * image_meta.width
+        y = shapeSelector.geometry.y * image_meta.height
+        ratio = if 75/width < 75/height then 75/width else 75/height
 
-          ratio = if 50/width < 50/height then 50/width else 50/height
-          style =  "display: block;"
-          style += "background-image: url(" + img_url + ");"
-          style += "width:" + width + "px;"
-          style += "height:" + height + "px;"
-          style += "background-position: -" + x + "px -" + y + "px;"
-          style += "transform:scale("+ ratio + "," + ratio + ");"
-          style += "-webkit-transform:scale("+ ratio + "," + ratio + ");"
-          style += "-moz-transform:scale("+ ratio + "," + ratio + ");"
+        imgCanvas = document.createElement "canvas"
+        imgContext = imgCanvas.getContext "2d"
 
-          container = $element.parent().parent().find('div#image-annotation-container')
-          image = '<span style="'.concat style, '"></span>'
-          container.append(image)
-          #container.css("width", width*ratio+25)
-          #container.css("height", height*ratio+1)
-          #container.css("position", "relative")
-          #container.css("left", -x)
-          #container.css("top", -y)
-        #else
-        #  if shapeSelector.shapeType is 'polygon'
-        #    style = "clip-path: polygon("
-        #    inner =""
-        #    for point in shapeSelector.geometry.points
-        #      inner += "".concat point.x * image_meta.width, "px ", point.y * image_meta.height, "px, "
-        #    inner = inner.slice 0, inner.length - 2
-        #    style = style.concat inner, "); -webkit-clip-path: polygon(", inner, ");"
-        #    #container = $('center#image-annotation-container')
-        #    container = $element.parent().parent().find('blockquote#image-annotation-container')
-        #    console.log '----------------------------------'
-        #    console.log container
-        #    console.log '----------------------------------'
-        #    image = '<img src="'.concat img_url, '" style="', style, '"></img>'
-        #    container.append(image)
+        imgCanvas.width = width * ratio
+        imgCanvas.height = height * ratio
+        imgContext.drawImage image, x, y, width, height, 0, 0, width * ratio, height * ratio
+
+        container = $element.parent().parent().find('div#image-annotation-container')
+        container.append imgCanvas
 
     $scope.$watch 'model', (model) ->
       if model?
