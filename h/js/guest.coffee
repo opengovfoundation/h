@@ -61,9 +61,6 @@ class Annotator.Guest extends Annotator
       if not @plugins[name]
         this.addPlugin(name, opts)
 
-    #   annotorious.mediatypes.image.ImageAnnotator()
-    # annotorious.mediatypes.image.ImageModule()
-
     # Scan the document text with the DOM Text libraries
     this.scanDocument "Annotator initialized"
 
@@ -103,7 +100,7 @@ class Annotator.Guest extends Annotator
           $(this).removeClass('annotator-hl-active')
 
       # Do something with image annotation
-      @plugins.AnnotoriousImagePlugin.setActiveHighlights tags
+      @plugins.AnnotoriousImagePlugin.setActiveHighlights tags, this.visibleHighlights
     )
 
     .bind('scrollTo', (ctx, tag) =>
@@ -342,6 +339,7 @@ class Annotator.Guest extends Annotator
 
   onSetVisibleHighlights: (state) =>
     this.visibleHighlights = state
+    @plugins.AnnotoriousImagePlugin.switchHighlightAll state
     this.setVisibleHighlights state, false
 
   # TODO: Workaround for double annotation deletion.
