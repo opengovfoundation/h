@@ -2582,7 +2582,7 @@ goog.dom.query = function() {
   var b = goog.userAgent.WEBKIT && "BackCompat" == goog.dom.getDocument().compatMode, c = goog.dom.getDocument().firstChild.children ? "children" : "childNodes", d = !1, e = function(a) {
     for(var a = 0 <= ">~+".indexOf(a.slice(-1)) ? a + " * " : a + " ", b = function(b, c) {
       return goog.string.trim(a.slice(b, c))
-    }, c = [], e = -1, f = -1, g = -1, h = -1, i = -1, j = -1, l = -1, z = "", s = "", E, q = 0, n = a.length, m = null, k = null, p = function() {
+    }, c = [], e = -1, f = -1, g = -1, h = -1, i = -1, j = -1, l = -1, z = "", s = "", D, q = 0, n = a.length, m = null, k = null, p = function() {
       0 <= j && (m.id = b(j, q).replace(/\\/g, ""), j = -1);
       if(0 <= l) {
         var a = l == q ? null : b(l, q);
@@ -2592,7 +2592,7 @@ goog.dom.query = function() {
       0 <= i && (m.classes.push(b(i + 1, q).replace(/\\/g, "")), i = -1)
     };z = s, s = a.charAt(q), q < n;q++) {
       if("\\" != z) {
-        if(m || (E = q, m = {query:null, pseudos:[], attrs:[], classes:[], tag:null, oper:null, id:null, getTag:function() {
+        if(m || (D = q, m = {query:null, pseudos:[], attrs:[], classes:[], tag:null, oper:null, id:null, getTag:function() {
           return d ? this.otag : this.tag
         }}, l = q), 0 <= e) {
           if("]" == s) {
@@ -2607,7 +2607,7 @@ goog.dom.query = function() {
             "=" == s && (g = 0 <= "|~^$*".indexOf(z) ? z : "", k.type = g + s, k.attr = b(e + 1, q - g.length), g = q + 1)
           }
         }else {
-          0 <= f ? ")" == s && (0 <= h && (k.value = b(f + 1, q)), h = f = -1) : "#" == s ? (p(), j = q + 1) : "." == s ? (p(), i = q) : ":" == s ? (p(), h = q) : "[" == s ? (p(), e = q, k = {}) : "(" == s ? (0 <= h && (k = {name:b(h + 1, q), value:null}, m.pseudos.push(k)), f = q) : " " == s && z != s && (p(), 0 <= h && m.pseudos.push({name:b(h + 1, q)}), m.loops = m.pseudos.length || m.attrs.length || m.classes.length, m.oquery = m.query = b(E, q), m.otag = m.tag = m.oper ? null : m.tag || "*", 
+          0 <= f ? ")" == s && (0 <= h && (k.value = b(f + 1, q)), h = f = -1) : "#" == s ? (p(), j = q + 1) : "." == s ? (p(), i = q) : ":" == s ? (p(), h = q) : "[" == s ? (p(), e = q, k = {}) : "(" == s ? (0 <= h && (k = {name:b(h + 1, q), value:null}, m.pseudos.push(k)), f = q) : " " == s && z != s && (p(), 0 <= h && m.pseudos.push({name:b(h + 1, q)}), m.loops = m.pseudos.length || m.attrs.length || m.classes.length, m.oquery = m.query = b(D, q), m.otag = m.tag = m.oper ? null : m.tag || "*", 
           m.tag && (m.tag = m.tag.toUpperCase()), c.length && c[c.length - 1].oper && (m.infixOper = c.pop(), m.query = m.infixOper.query + " " + m.query), c.push(m), m = null)
         }
       }
@@ -2782,8 +2782,8 @@ goog.dom.query = function() {
     }));
     !c && !("default" in b) && (c = goog.functions.TRUE);
     return c
-  }, F = {}, G = function(d) {
-    var e = F[d.query];
+  }, E = {}, F = function(d) {
+    var e = E[d.query];
     if(e) {
       return e
     }
@@ -2863,11 +2863,11 @@ goog.dom.query = function() {
         }
       }
     }
-    return F[d.query] = e
-  }, H = {}, I = {}, J = function(b) {
+    return E[d.query] = e
+  }, G = {}, H = {}, I = function(b) {
     var c = e(goog.string.trim(b));
     if(1 == c.length) {
-      var d = G(c[0]);
+      var d = F(c[0]);
       return function(a) {
         if(a = d(a, [])) {
           a.nozip = !0
@@ -2881,8 +2881,8 @@ goog.dom.query = function() {
         d = c[i];
         e = b.length - 1;
         0 < e && (g = {}, h.nozip = !0);
-        e = G(d);
-        for(var D = 0;d = b[D];D++) {
+        e = F(d);
+        for(var j = 0;d = b[j];j++) {
           e(d, h, g)
         }
         if(!h.length) {
@@ -2892,21 +2892,21 @@ goog.dom.query = function() {
       }
       return h
     }
-  }, K = !!goog.dom.getDocument().querySelectorAll && (!goog.userAgent.WEBKIT || goog.userAgent.isVersion("526")), L = function(a, c) {
-    if(K) {
-      var d = I[a];
+  }, J = !!goog.dom.getDocument().querySelectorAll && (!goog.userAgent.WEBKIT || goog.userAgent.isVersion("526")), K = function(a, c) {
+    if(J) {
+      var d = H[a];
       if(d && !c) {
         return d
       }
     }
-    if(d = H[a]) {
+    if(d = G[a]) {
       return d
     }
     var d = a.charAt(0), e = -1 == a.indexOf(" ");
     0 <= a.indexOf("#") && e && (c = !0);
-    if(K && !c && -1 == ">~+".indexOf(d) && (!goog.userAgent.IE || -1 == a.indexOf(":")) && !(b && 0 <= a.indexOf(".")) && -1 == a.indexOf(":contains") && -1 == a.indexOf("|=")) {
+    if(J && !c && -1 == ">~+".indexOf(d) && (!goog.userAgent.IE || -1 == a.indexOf(":")) && !(b && 0 <= a.indexOf(".")) && -1 == a.indexOf(":contains") && -1 == a.indexOf("|=")) {
       var f = 0 <= ">~+".indexOf(a.charAt(a.length - 1)) ? a + " *" : a;
-      return I[a] = function(b) {
+      return H[a] = function(b) {
         try {
           if(!(9 == b.nodeType || e)) {
             throw"";
@@ -2915,18 +2915,18 @@ goog.dom.query = function() {
           goog.userAgent.IE ? c.commentStrip = !0 : c.nozip = !0;
           return c
         }catch(d) {
-          return L(a, !0)(b)
+          return K(a, !0)(b)
         }
       }
     }
     var g = a.split(/\s*,\s*/);
-    return H[a] = 2 > g.length ? J(a) : function(a) {
+    return G[a] = 2 > g.length ? I(a) : function(a) {
       for(var b = 0, c = [], d;d = g[b++];) {
-        c = c.concat(J(d)(a))
+        c = c.concat(I(d)(a))
       }
       return c
     }
-  }, v = 0, N = goog.userAgent.IE ? function(a) {
+  }, v = 0, M = goog.userAgent.IE ? function(a) {
     return d ? a.getAttribute("_uid") || a.setAttribute("_uid", ++v) || v : a.uniqueID
   } : function(a) {
     return a._uid || (a._uid = ++v)
@@ -2934,9 +2934,9 @@ goog.dom.query = function() {
     if(!b) {
       return 1
     }
-    var c = N(a);
+    var c = M(a);
     return!b[c] ? b[c] = 1 : 0
-  }, O = function(a) {
+  }, N = function(a) {
     if(a && a.nozip) {
       return a
     }
@@ -2971,7 +2971,7 @@ goog.dom.query = function() {
       }
     }
     return b
-  }, M = function(a, b) {
+  }, L = function(a, b) {
     if(!a) {
       return[]
     }
@@ -2986,10 +2986,10 @@ goog.dom.query = function() {
     }
     var b = b || goog.dom.getDocument(), c = b.ownerDocument || b.documentElement;
     d = b.contentType && "application/xml" == b.contentType || goog.userAgent.OPERA && (b.doctype || "[object XMLDocument]" == c.toString()) || !!c && (goog.userAgent.IE ? c.xml : b.xmlVersion || c.xmlVersion);
-    return(c = L(a)(b)) && c.nozip ? c : O(c)
+    return(c = K(a)(b)) && c.nozip ? c : N(c)
   };
-  M.pseudos = x;
-  return M
+  L.pseudos = x;
+  return L
 }();
 goog.exportSymbol("goog.dom.query", goog.dom.query);
 goog.exportSymbol("goog.dom.query.pseudos", goog.dom.query.pseudos);
@@ -6785,7 +6785,7 @@ annotorious.mediatypes.image.Viewer = function(a, b) {
   this._shapes = [];
   this._g2d = this._canvas.getContext("2d");
   this._eventsEnabled = !0;
-  this._keepHighlighted = !1;
+  this._visibleMode = this._keepHighlighted = !1;
   var c = this;
   goog.events.listen(this._canvas, annotorious.events.ui.EventType.MOVE, function(a) {
     c._eventsEnabled ? c._onMouseMove(a) : c._cachedMouseEvent = a
@@ -6855,24 +6855,27 @@ annotorious.mediatypes.image.Viewer.prototype._onMouseMove = function(a) {
   var b = this.topAnnotationAt(a.offsetX, a.offsetY);
   b ? (this._keepHighlighted = this._keepHighlighted && b == this._currentAnnotation, this._currentAnnotation ? this._currentAnnotation != b && (this._eventsEnabled = !1, this._annotator.popup.startHideTimer()) : (this._currentAnnotation = b, this.redraw(), this._annotator.fireEvent(annotorious.events.EventType.MOUSE_OVER_ANNOTATION, {annotation:this._currentAnnotation, mouseEvent:a}))) : !this._keepHighlighted && this._currentAnnotation && (this._eventsEnabled = !1, this._annotator.popup.startHideTimer())
 };
-annotorious.mediatypes.image.Viewer.prototype._draw = function(a, b) {
-  var c = goog.array.find(this._annotator.getAvailableSelectors(), function(b) {
+annotorious.mediatypes.image.Viewer.prototype._draw = function(a, b, c) {
+  var d = goog.array.find(this._annotator.getAvailableSelectors(), function(b) {
     return b.getSupportedShapeType() == a.type
   });
-  c ? c.drawShape(this._g2d, a, b) : console.log("WARNING unsupported shape type: " + a.type)
+  d ? d.drawShape(this._g2d, a, b, c) : console.log("WARNING unsupported shape type: " + a.type)
 };
 annotorious.mediatypes.image.Viewer.prototype.redraw = function() {
   this._g2d.clearRect(0, 0, this._canvas.width, this._canvas.height);
   var a = this;
   goog.array.forEach(this._annotations, function(b) {
-    b != a._currentAnnotation && a._draw(a._shapes[annotorious.shape.hashCode(b.shapes[0])])
+    b != a._currentAnnotation && (a._visibleMode ? a._draw(a._shapes[annotorious.shape.hashCode(b.shapes[0])], !0) : a._draw(a._shapes[annotorious.shape.hashCode(b.shapes[0])]))
   });
   if(this._currentAnnotation) {
     var b = this._shapes[annotorious.shape.hashCode(this._currentAnnotation.shapes[0])];
-    this._draw(b, !0);
+    this._visibleMode ? this._draw(b, !0, !0) : this._draw(b, !0);
     b = annotorious.shape.getBoundingRect(b).geometry;
     this._annotator.popup.show(this._currentAnnotation, new annotorious.shape.geom.Point(b.x, b.y + b.height + 5))
   }
+};
+annotorious.mediatypes.image.Viewer.prototype.setVisibleMode = function(a) {
+  this._visibleMode = a
 };
 annotorious.events = {};
 annotorious.events.ui = {};
@@ -6893,6 +6896,7 @@ annotorious.plugins.selection.RectDragSelector.prototype.init = function(a, b) {
   this._STROKE = "#ffffff";
   this._FILL = void 0;
   this._HI_STROKE = "#fff000";
+  this._HIPO_STROKE = "#ff7f00";
   this._HI_FILL = void 0;
   this._canvas = a;
   this._annotator = b;
@@ -6964,9 +6968,9 @@ annotorious.plugins.selection.RectDragSelector.prototype.getViewportBounds = fun
   this._opposite.y > this._anchor.y ? (c = this._anchor.y, d = this._opposite.y) : (c = this._opposite.y, d = this._anchor.y);
   return{top:c, right:a, bottom:d, left:b}
 };
-annotorious.plugins.selection.RectDragSelector.prototype.drawShape = function(a, b, c) {
-  var d;
-  b.type == annotorious.shape.ShapeType.RECTANGLE && (c ? (a.lineWidth = 1.2, c = this._HI_STROKE, d = this._HI_FILL) : (a.lineWidth = 1, c = this._STROKE, d = this._FILL), b = b.geometry, a.strokeStyle = this._OUTLINE, a.strokeRect(b.x + 0.5, b.y + 0.5, b.width + 1, b.height + 1), a.strokeStyle = c, a.strokeRect(b.x + 1.5, b.y + 1.5, b.width - 1, b.height - 1), d && (a.fillStyle = d, a.fillRect(b.x + 1.5, b.y + 1.5, b.width - 1, b.height - 1)))
+annotorious.plugins.selection.RectDragSelector.prototype.drawShape = function(a, b, c, d) {
+  b.type == annotorious.shape.ShapeType.RECTANGLE && (d ? (a.lineWidth = 1.2, c = this._HIPO_STROKE, d = this._HI_FILL) : c ? (a.lineWidth = 1.2, c = this._HI_STROKE, d = this._HI_FILL) : (a.lineWidth = 1, c = this._STROKE, d = this._FILL), b = b.geometry, a.strokeStyle = this._OUTLINE, a.strokeRect(b.x + 0.5, b.y + 0.5, b.width + 1, b.height + 1), a.strokeStyle = c, a.strokeRect(b.x + 1.5, b.y + 1.5, b.width - 1, b.height - 1), d && (a.fillStyle = d, a.fillRect(b.x + 1.5, b.y + 1.5, b.width - 1, 
+  b.height - 1)))
 };
 annotorious.templates.image = {};
 annotorious.templates.image.canvas = function(a) {
@@ -7307,7 +7311,6 @@ window.Annotator.Plugin.AnnotoriousImagePlugin = function() {
     c.updateAnnotation(d, a)
   };
   a.prototype.calculateHeatmapPoints = function(a, c, d, e, f, g, h) {
-    document.test = this._el;
     var i = this;
     return Array.prototype.slice.call(this._el.getElementsByTagName("img")).reduce(function(j, l) {
       var k = l.getBoundingClientRect(), n = k.top - a.offset().top - c.pageYOffset, w;
@@ -7332,17 +7335,30 @@ window.Annotator.Plugin.AnnotoriousImagePlugin = function() {
       return j
     }, [])
   };
-  a.prototype.setActiveHighlights = function(a) {
+  a.prototype.setActiveHighlights = function(a, c) {
+    for(var d in this.handlers) {
+      var e = this.handlers[d], f = !1, g;
+      for(g in e._annotations) {
+        var h = e._annotations[g], i = h.shapes[0];
+        i.units == annotorious.shape.Units.FRACTION && (i = annotorious.shape.transform(i, function(a) {
+          return e._imageAnnotator.fromItemCoordinates(a)
+        }));
+        -1 != a.indexOf(h.hypoAnnotation.$$tag) ? (c ? e._imageAnnotator._viewer._draw(i, !0, !0) : e._imageAnnotator._viewer._draw(i, !0), f = !0) : c ? e._imageAnnotator._viewer._draw(i, !0) : e._imageAnnotator._viewer._draw(i, !1)
+      }
+      c || (f ? goog.dom.classes.addRemove(e._imageAnnotator._viewCanvas, "annotorious-item-unfocus", "annotorious-item-focus") : goog.dom.classes.addRemove(e._imageAnnotator._viewCanvas, "annotorious-item-focus", "annotorious-item-unfocus"))
+    }
+  };
+  a.prototype.switchHighlightAll = function(a) {
     for(var c in this.handlers) {
-      var d = this.handlers[c], e = !1, f;
-      for(f in d._annotations) {
-        var g = d._annotations[f], h = g.shapes[0];
-        h.units == annotorious.shape.Units.FRACTION && (h = annotorious.shape.transform(h, function(a) {
+      var d = this.handlers[c];
+      d._imageAnnotator._viewer.setVisibleMode(a);
+      for(var e in d._annotations) {
+        var f = d._annotations[e].shapes[0];
+        f.units == annotorious.shape.Units.FRACTION && (f = annotorious.shape.transform(f, function(a) {
           return d._imageAnnotator.fromItemCoordinates(a)
         }));
-        -1 != a.indexOf(g.hypoAnnotation.$$tag) ? (d._imageAnnotator._viewer._draw(h, !0), e = !0) : d._imageAnnotator._viewer._draw(h, !1)
+        a ? d._imageAnnotator._viewer._draw(f, !0) : d._imageAnnotator._viewer._draw(f, !1)
       }
-      e ? goog.dom.classes.addRemove(d._imageAnnotator._viewCanvas, "annotorious-item-unfocus", "annotorious-item-focus") : goog.dom.classes.addRemove(d._imageAnnotator._viewCanvas, "annotorious-item-focus", "annotorious-item-unfocus")
     }
   };
   a.prototype.pluginInit = function() {

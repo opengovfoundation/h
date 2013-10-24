@@ -655,7 +655,6 @@ class Annotation
         $scope.crop_image this, img_url, meta, shapeSelector
 
     $scope.crop_image = (image, img_url, image_meta, shapeSelector) ->
-      console.log image
       unless shapeSelector? then return
       if shapeSelector.shapeType is 'rect'
         # Convert fraction to pixel
