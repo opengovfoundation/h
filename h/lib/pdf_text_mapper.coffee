@@ -37,7 +37,7 @@ class window.PDFTextMapper extends window.PageTextMapperCore
     # Detect page un-rendering
     addEventListener "DOMNodeRemoved", (evt) =>
       node = evt.target
-      if node.nodeType is Node.ELEMENT_NODE and node.nodeName is "div" and node.className is "textLayer"
+      if node.nodeType is Node.ELEMENT_NODE and node.nodeName.toLowerCase() is "div" and node.className is "textLayer"
         index = parseInt node.parentNode.id.substr(13) - 1
 
         # Forget info about the new DOM subtree
