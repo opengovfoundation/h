@@ -253,6 +253,7 @@ app = Bundle(
                 'directives',
                 'app_directives',
                 'displayer',
+                'imagecropper',
                 'services',
                 'streamfilter',
                 'streamsearch',
