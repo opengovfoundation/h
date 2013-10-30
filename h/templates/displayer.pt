@@ -56,11 +56,6 @@
               <div class="excerpt">
                 <blockquote>{{root.quote}}</blockquote>
               </div>
-              <div class="domain thread">
-                <a href="{{root.source}}">{{root.source_stripped}}</a>
-                |
-                <a href="{{root.uri}}">{{root.title}}</a>
-              </div>
             </span>
 
             <!-- Image annotation -->
@@ -69,6 +64,12 @@
                   <center id="image-annotation-container"></center>
               </div>
             </span>
+
+            <div class="domain thread">
+              <a href="{{root.source}}">{{root.source_stripped}}</a>
+              |
+              <a href="{{root.uri}}">{{root.title}}</a>
+            </div>
 
             <div class="yui3-u-1"
                ng-class="(root.quote.length) && '' || ''"
