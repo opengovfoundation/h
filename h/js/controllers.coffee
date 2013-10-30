@@ -491,8 +491,10 @@ class App
     , 5000
 
 class Annotation
-  this.$inject = ['$element', '$location', '$scope', 'annotator', 'drafts', '$timeout', '$window']
-  constructor: ($element, $location, $scope, annotator, drafts, $timeout, $window) ->
+  this.$inject = ['$element', '$location', '$scope', '$timeout', '$window',
+                  'annotator', 'drafts', 'imagecropper']
+  constructor: ($element, $location, $scope, $timeout, $window
+                annotator, drafts, imagecropper) ->
     threading = annotator.threading
     $scope.action = 'create'
     $scope.editing = false
@@ -647,33 +649,6 @@ class Annotation
           $scope.model.$modelValue.highlightText =
             $scope.model.$modelValue.highlightText.replace regexp, annotator.highlighter
 
-    $scope.get_meta = (img_url, shapeSelector) ->
-      $("<img/>").attr("src", img_url).load ->
-        meta = {}
-        meta.width = this.width
-        meta.height = this.height
-        $scope.crop_image this, img_url, meta, shapeSelector
-
-    $scope.crop_image = (image, img_url, image_meta, shapeSelector) ->
-      unless shapeSelector? then return
-      if shapeSelector.shapeType is 'rect'
-        # Convert fraction to pixel
-        width = shapeSelector.geometry.width * image_meta.width
-        height = shapeSelector.geometry.height * image_meta.height
-        x = shapeSelector.geometry.x * image_meta.width
-        y = shapeSelector.geometry.y * image_meta.height
-        ratio = if 75/width < 75/height then 75/width else 75/height
-
-        imgCanvas = document.createElement "canvas"
-        imgContext = imgCanvas.getContext "2d"
-
-        imgCanvas.width = width * ratio
-        imgCanvas.height = height * ratio
-        imgContext.drawImage image, x, y, width, height, 0, 0, width * ratio, height * ratio
-
-        container = $element.parent().parent().find('div#image-annotation-container')
-        container.append imgCanvas
-
     $scope.$watch 'model', (model) ->
       if model?
         shapeSelector = null
@@ -688,8 +663,8 @@ class Annotation
 
         # Image annotation support - cropping image
         if shapeSelector?
-          $scope.get_meta image_src, shapeSelector
-
+          container = $element.parent().parent().find('div#image-annotation-container')
+          imagecropper.createCroppedCanvas image_src, shapeSelector, container, true
 
 class Editor
   this.$inject = ['$location', '$routeParams', '$scope', 'annotator']
@@ -987,7 +962,7 @@ class Notification
   ) ->
 
 
-angular.module('h.controllers', ['bootstrap', 'h.streamfilter'])
+angular.module('h.controllers', ['bootstrap', 'h.streamfilter', 'h.imagecropper'])
   .controller('AppController', App)
   .controller('AnnotationController', Annotation)
   .controller('EditorController', Editor)
