@@ -492,9 +492,9 @@ class App
 
 class Annotation
   this.$inject = ['$element', '$location', '$scope', '$timeout', '$window',
-                  'annotator', 'drafts', 'imagecropper']
+                  'annotator', 'drafts']
   constructor: ($element, $location, $scope, $timeout, $window
-                annotator, drafts, imagecropper) ->
+                annotator, drafts) ->
     threading = annotator.threading
     $scope.action = 'create'
     $scope.editing = false
@@ -648,23 +648,6 @@ class Annotation
         for regexp in annotator.text_regexp
           $scope.model.$modelValue.highlightText =
             $scope.model.$modelValue.highlightText.replace regexp, annotator.highlighter
-
-    $scope.$watch 'model', (model) ->
-      if model?
-        shapeSelector = null
-        image_src = null
-        if model.$modelValue?.target?
-          for target in model.$modelValue.target
-            for selector in target.selector
-              if selector.type is 'ShapeSelector'
-                shapeSelector = selector
-                image_src = selector.source
-                break
-
-        # Image annotation support - cropping image
-        if shapeSelector?
-          container = $element.parent().parent().find('div#image-annotation-container')
-          imagecropper.createCroppedCanvas image_src, shapeSelector, container, true
 
 class Editor
   this.$inject = ['$location', '$routeParams', '$scope', 'annotator']

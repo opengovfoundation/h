@@ -405,6 +405,59 @@ whenscrolled = ['$window', ($window) ->
         scope.$apply attr.whenscrolled
 ]
 
+imagequote = [ ->
+  link: (scope, elem, attr, ctrl) ->
+    scope.loadPicture = (img_url, shapeSelector, container, scale) ->
+      r = $.Deferred()
+      $("<img/>").attr("src", img_url).load ->
+        r.resolve this, shapeSelector, container, scale
+      r
+
+    scope.cropImage = (image, shapeSelector, container, scale) ->
+      unless shapeSelector? then return
+      if shapeSelector.shapeType is 'rect'
+        # Convert fraction to pixel
+        width = shapeSelector.geometry.width * image.width
+        height = shapeSelector.geometry.height * image.height
+        x = shapeSelector.geometry.x * image.width
+        y = shapeSelector.geometry.y * image.height
+        if scale
+          ratio = if 75/width < 75/height then 75/width else 75/height
+        else ratio = 1
+
+        imgCanvas = document.createElement "canvas"
+        imgContext = imgCanvas.getContext "2d"
+
+        imgCanvas.width = width * ratio
+        imgCanvas.height = height * ratio
+        imgContext.drawImage image, x, y, width, height, 0, 0, width * ratio, height * ratio
+        container.append imgCanvas
+
+    scope.createCroppedCanvas = (img_url, shapeSelector, container, scale = false) ->
+      scope.loadPicture(img_url, shapeSelector, container, scale).done(scope.cropImage)
+
+    scope.$watch 'target', (target) ->
+      target = JSON.parse target
+      shapeSelector = null
+      image_src = null
+      if target?
+        for target in target
+          for selector in target.selector
+            if selector.type is 'ShapeSelector'
+              shapeSelector = selector
+              image_src = selector.source
+              break
+
+      if shapeSelector?
+        scope.createCroppedCanvas image_src, shapeSelector, elem, scope.scale
+
+  require: '?ngModel'
+  restrict: 'E'
+  scope:
+    scale: '@'
+    target: '@'
+]
+
 angular.module('h.directives', ['ngSanitize'])
   .directive('authentication', authentication)
   .directive('fuzzytime', fuzzytime)
@@ -423,3 +476,4 @@ angular.module('h.directives', ['ngSanitize'])
   .directive('notification', notification)
   .directive('streamviewer', streamviewer)
   .directive('whenscrolled', whenscrolled)
+  .directive('imagequote', imagequote)

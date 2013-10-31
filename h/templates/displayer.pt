@@ -77,7 +77,11 @@
             <!-- Image annotation -->
             <span ng-show="root.image_src">
               <div class="excerpt">
-                  <center id="image-annotation-container"></center>
+                <!-- Image annotation -->
+                <center>
+                  <imagequote target="{{annotation.target}}"
+                              scale="false"/>
+                </center>
               </div>
             </span>
 

@@ -45,6 +45,17 @@
                 |
                 <a href="{{annotation.uri}}">{{annotation.title}}</a>
               </div>
+
+              <!-- Image annotation -->
+              <imagequote
+                          target="{{annotation.target}}"
+                          scale="true"/>
+              <span ng-show="annotation.imageAnnotation">
+                  Hello!
+                  <center id="image-annotation-container"></center>
+              </span>
+
+
             </div>
               <div>
                 <br/>

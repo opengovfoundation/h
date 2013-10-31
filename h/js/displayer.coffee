@@ -13,8 +13,8 @@ class Displayer
     window.location.port + '/__streamer__'
   idTable : {}
 
-  this.$inject = ['$scope','$element','$timeout','imagecropper','streamfilter']
-  constructor: ($scope, $element, $timeout, imagecropper, streamfilter) ->
+  this.$inject = ['$scope','$element','$timeout','streamfilter']
+  constructor: ($scope, $element, $timeout, streamfilter) ->
     # Generate client ID
     buffer = new Array(16)
     uuid.v4 null, buffer, 0
@@ -134,21 +134,8 @@ class Displayer
     if $scope.annotation.referrers?
       $scope.manage_new_data $scope.annotation.referrers, 'past'
 
-    # Image annotation support - cropping image
-    if $scope.root.image_src
-      shapeSelector = null
-      if $scope.annotation.target?
-        for target in $scope.annotation.target
-          for selector in target.selector
-            if selector.type is 'ShapeSelector'
-              shapeSelector = selector
-              break
-      if shapeSelector?
-        container = $('center#image-annotation-container')
-        imagecropper.createCroppedCanvas $scope.root.image_src, shapeSelector, container, false
-
     document.init_annotation = null
     $scope.open()
 
-angular.module('h.displayer',['h.streamfilter','h.filters','h.imagecropper','h.directives','bootstrap'])
+angular.module('h.displayer',['h.streamfilter','h.filters','h.directives','bootstrap'])
   .controller('DisplayerCtrl', Displayer)

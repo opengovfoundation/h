@@ -12,6 +12,11 @@
              ng-init="collapsed = ann_info.show_quote[thread.message.id]">
           <!-- Annotation -->
 
+            <div class="excerpt"
+                 ng-hide="collapsed">
+              <imagequote target="{{thread.message.target}}"
+                          scale="true"/>
+            </div>
             <!-- Excerpts -->
             <div class="excerpt"
                  ng-repeat="target in thread.message.target"
