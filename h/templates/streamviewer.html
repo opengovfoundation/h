@@ -4,28 +4,31 @@
           <li ng-repeat="annotation in annotations track by annotation.id"
               repeat-anim array="annotations"
               class="paper thread stream-list">
-            <div class="excerpt"
-                 ng-hide="view"
+            <div ng-hide="view"
                  ng-click="view=!view">
-              <div>
+              <div class="excerpt">
                 <div>
-                  <div ng-show="annotation.text.length">
-                      <blockquote ng-show="annotation.quoteSource=='document'">
-			{{annotation.quote | elide:140}}
-		      </blockquote>
-                      <blockquote ng-hide="annotation.quoteSource=='document'">
-                        <markdown ng-model="$parent.annotation.quote"
-                                  ng-readonly="true"
-                                  name="quote" />
-		      </blockquote>
+                  <div ng-show="annotation.text.length && annotation.quote.length">
+                    <blockquote ng-show="annotation.quoteSource=='document'">
+                      {{annotation.quote | elide:140}}
+                    </blockquote>
+                    <blockquote ng-hide="annotation.quoteSource=='document'">
+                      <markdown ng-model="$parent.annotation.quote"
+                                ng-readonly="true"
+                                name="quote" />
+                    </blockquote>
                   </div>
+                </div>
+              </div>
+               <!-- Image annotation -->
+              <imagequote target="{{annotation.target}}"
+                          scale="true"/>
+
                   <div class="small domain thread">
                     <a href="{{annotation.source}}">{{annotation.source_stripped}}</a>
                     |
                     <a href="{{annotation.uri}}">{{annotation.title}}</a>
                   </div>
-                </div>
-              </div>
             </div>
             <div class="excerpt"
                  ng-show="view"
@@ -40,22 +43,16 @@
                             name="quote" />
                 </blockquote>
               </div>
+
+               <!-- Image annotation -->
+              <imagequote target="{{annotation.target}}"
+                          scale="true"/>
+
               <div class="small domain thread">
                 <a href="{{annotation.source}}">{{annotation.source_stripped}}</a>
                 |
                 <a href="{{annotation.uri}}">{{annotation.title}}</a>
               </div>
-
-              <!-- Image annotation -->
-              <imagequote
-                          target="{{annotation.target}}"
-                          scale="true"/>
-              <span ng-show="annotation.imageAnnotation">
-                  Hello!
-                  <center id="image-annotation-container"></center>
-              </span>
-
-
             </div>
               <div>
                 <br/>
