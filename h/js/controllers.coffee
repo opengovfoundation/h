@@ -971,7 +971,7 @@ class Notification
   ) ->
 
 
-angular.module('h.controllers', ['bootstrap', 'h.streamfilter', 'h.imagecropper'])
+angular.module('h.controllers', ['bootstrap', 'h.streamfilter'])
   .controller('AppController', App)
   .controller('AnnotationController', Annotation)
   .controller('EditorController', Editor)

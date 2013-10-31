@@ -319,10 +319,17 @@ class Annotator.Plugin.Heatmap extends Annotator.Plugin
           else if not $(hl).hasClass('annotator-hl-temporary')
             $(hl).removeClass('annotator-hl-active')
 
+        tags = []
+        for annotation in @buckets[bucket]
+          tags.push annotation.$$tag
+        @annotator.plugins.AnnotoriousImagePlugin.setActiveHighlights tags, @annotator.visibleHighlights
+
+
       # Gets rid of them after
       .on 'mouseout', =>
         highlights = wrapper.find('.annotator-hl')
         highlights.removeClass('annotator-hl-active')
+        @annotator.plugins.AnnotoriousImagePlugin.setActiveHighlights [], @annotator.visibleHighlights
 
       # Does one of a few things when a tab is clicked depending on type
       .on 'click', (bucket) =>
