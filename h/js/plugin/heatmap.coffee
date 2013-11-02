@@ -143,7 +143,7 @@ class Annotator.Plugin.Heatmap extends Annotator.Plugin
 
     # Imagehighlights
     imagePlugin = @annotator.plugins.AnnotoriousImagePlugin
-    imagePoints = imagePlugin.calculateHeatmapPoints wrapper, defaultView, @BUCKET_SIZE, @BUCKET_THRESHOLD_PAD, above, below, $(window).height()
+    imagePoints = imagePlugin.calculateHeatmapPoints @BUCKET_SIZE, @BUCKET_THRESHOLD_PAD, above, below, $(window).height()
     points = points.concat imagePoints
 
     # Accumulate the overlapping annotations into buckets.
