@@ -74,20 +74,19 @@
               </div>
             </span>
 
-            <!-- Image annotation -->
             <span ng-show="root.image_src">
-              <div class="excerpt">
+              <div class="domain thread">
                 <!-- Image annotation -->
-                <imagequote target="{{annotation.target}}"
-                            scale="false"/>
+                <div class="excerpt">
+                  <!-- Image annotation -->
+                  <imagequote target="{{annotation.target}}"
+                              scale="false"/>
+                </div>
+                <a href="{{root.source}}">{{root.source_stripped}}</a>
+                |
+                <a href="{{root.uri}}">{{root.title}}</a>
               </div>
             </span>
-
-            <div class="domain thread">
-              <a href="{{root.source}}">{{root.source_stripped}}</a>
-              |
-              <a href="{{root.uri}}">{{root.title}}</a>
-            </div>
 
             <div class="yui3-u-1"
                  ng-class="(root.quote.length) && '' || ''"
