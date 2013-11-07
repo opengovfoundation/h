@@ -437,6 +437,7 @@ imagequote = [ ->
       scope.loadPicture(img_url, shapeSelector, container, scale).done(scope.cropImage)
 
     scope.$watch 'target', (target) ->
+      if scope.rendered then return
       target = JSON.parse target
       shapeSelector = null
       image_src = null
@@ -449,6 +450,7 @@ imagequote = [ ->
               break
 
       if shapeSelector?
+        scope.rendered = true
         scope.createCroppedCanvas image_src, shapeSelector, elem, scope.scale
 
   require: '?ngModel'
